@@ -1391,7 +1391,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters { self =>
       var resTpe: asm.Type = javaType(m.symbol.tpe.resultType)
       if (m.symbol.isClassConstructor)
         resTpe = asm.Type.VOID_TYPE
-      val isAbstractTraitMeth = isJInterface && !m.symbol.hasFlag(Flags.DEFAULTMETHOD)
+      val isAbstractTraitMeth = isJInterface && !m.symbol.hasFlag(Flags.JAVA_DEFAULTMETHOD)
 
       val flags = mkFlags(
         javaFlags(m.symbol),

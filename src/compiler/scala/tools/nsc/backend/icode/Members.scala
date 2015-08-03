@@ -218,7 +218,7 @@ trait Members {
 
     /** Is this method deferred ('abstract' in Java sense)?
      */
-    def isAbstractMethod = symbol.isDeferred || (symbol.owner.isInterface && !symbol.hasFlag(Flags.DEFAULTMETHOD)) || native
+    def isAbstractMethod = symbol.isDeferred || (symbol.owner.isInterface && !symbol.hasFlag(Flags.JAVA_DEFAULTMETHOD)) || native
 
     def isStatic: Boolean = symbol.isStaticMember
 

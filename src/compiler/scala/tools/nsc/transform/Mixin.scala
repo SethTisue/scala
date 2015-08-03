@@ -1065,7 +1065,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
         // <default> def apply(v1: Object)Object = apply(v1.unbox).box
         val functionClass = clazz.baseClasses(1)
         val genericApply = functionClass.info.member(nme.apply)
-        val bridge = genericApply.cloneSymbol(clazz, /*BRIDGE |*/ METHOD | DEFAULTMETHOD | DEFERRED).setPos(sym.pos)
+        val bridge = genericApply.cloneSymbol(clazz, /*BRIDGE |*/ METHOD | JAVA_DEFAULTMETHOD | DEFERRED).setPos(sym.pos)
         addDefDef(bridge,
           Apply(gen.mkAttributedSelect(gen.mkAttributedThis(sym.owner), sym), bridge.paramss.head.map(p => gen.mkAttributedIdent(p))))
 
@@ -1186,7 +1186,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
           val addDefault = enteringPhase(currentRun.erasurePhase.prev)(!sym.isDeferred) && sym.name != nme.toString_ // before lateDEFERRED
           if (addDefault) {
             def implSym = implClass(sym.owner).info.member(sym.name)
-            sym.setFlag(Flags.DEFAULTMETHOD)
+            sym.setFlag(Flags.JAVA_DEFAULTMETHOD)
             val tree = Apply(staticRef(implSym), gen.mkAttributedThis(sym.owner) :: sym.paramss.head.map(gen.mkAttributedRef))
             val app = typedPos(tree.pos)(tree)
             copyDefDef(dd)(rhs = app)
@@ -1197,7 +1197,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
             val genericApply = functionClass.info.decl(nme.apply)
             val specializedApply = specializeTypes.specializedOverloaded(genericApply, exitingSpecialize(clazz.info.baseType(functionClass).typeArgs))
             val app = Apply(gen.mkAttributedSelect(gen.mkAttributedThis(clazz), specializedApply), vparamss.head.map(p => gen.mkAttributedIdent(p.symbol)))
-            dd.symbol.setFlag(Flags.DEFAULTMETHOD)
+            dd.symbol.setFlag(Flags.JAVA_DEFAULTMETHOD)
             copyDefDef(dd)(rhs = typedPos(tree.pos)(app))
           } else {
             tree
@@ -1208,7 +1208,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
           val isImplementedStatically = sym.isMethod && !sym.isModule && !sym.hasFlag(ACCESSOR | SUPERACCESSOR)
           if (!isDeferred && isImplementedStatically) {
             val implSym = exitingMixin(implClass(sym.owner).info.member(sym.name))
-            sym.setFlag(Flags.DEFAULTMETHOD)
+            sym.setFlag(Flags.JAVA_DEFAULTMETHOD)
             val tree = Apply(staticRef(implSym), gen.mkAttributedCast(gen.mkAttributedThis(sym.owner), sym.owner.typeOfThis) ::  vparamss.head.map(t => gen.mkAttributedRef(t.symbol)))
             val app = exitingMixin(typedPos(tree.pos)(tree))
             copyDefDef(dd)(rhs = app)
