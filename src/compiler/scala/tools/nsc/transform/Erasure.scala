@@ -12,8 +12,7 @@ import symtab._
 import Flags._
 import scala.reflect.internal.Mode._
 
-abstract class Erasure extends AddInterfaces
-                          with scala.reflect.internal.transform.Erasure
+abstract class Erasure extends scala.reflect.internal.transform.Erasure
                           with typechecker.Analyzer
                           with TypingTransformers
                           with ast.TreeDSL
@@ -373,8 +372,8 @@ abstract class Erasure extends AddInterfaces
    *   - For Array[T].<init>    : {scala#Int)Array[T]
    *   - For a type parameter   : A type bounds type consisting of the erasures of its bounds.
    */
-  override def transformInfo(sym: Symbol, tp: Type): Type =
-    transformMixinInfo(super.transformInfo(sym, tp))
+//  override def transformInfo(sym: Symbol, tp: Type): Type =
+//    transformMixinInfo(super.transformInfo(sym, tp))
 
   val deconstMap = new TypeMap {
     // For some reason classOf[Foo] creates ConstantType(Constant(tpe)) with an actual Type for tpe,
@@ -1161,10 +1160,10 @@ abstract class Erasure extends AddInterfaces
       val tree1 = preTransformer.transform(tree)
       // log("tree after pretransform: "+tree1)
       exitingErasure {
-        val tree2 = mixinTransformer.transform(tree1)
+        //val tree2 = mixinTransformer.transform(tree1)
         // debuglog("tree after addinterfaces: \n" + tree2)
 
-        newTyper(rootContextPostTyper(unit, tree)).typed(tree2)
+        newTyper(rootContextPostTyper(unit, tree)).typed(tree1)
       }
     }
   }

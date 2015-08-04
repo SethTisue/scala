@@ -429,17 +429,17 @@ final class BCodeAsmCommon[G <: Global](val global: G) {
           // impl class after mixin. So the filter in mixin is not exactly what we need here (we
           // want to identify concrete trait methods, not any accessors). So we check some symbol
           // properties manually.
-          val traitMethodWithStaticImplementation = {
-            import symtab.Flags._
-            classSym.isTrait && !classSym.isImplClass &&
-              erasure.needsImplMethod(methodSym) &&
-              !methodSym.isModule &&
-              !(methodSym hasFlag (ACCESSOR | SUPERACCESSOR))
-          }
+//          val traitMethodWithStaticImplementation = {
+//            import symtab.Flags._
+//            classSym.isTrait && !classSym.isImplClass &&
+//              erasure.needsImplMethod(methodSym) &&
+//              !methodSym.isModule &&
+//              !(methodSym hasFlag (ACCESSOR | SUPERACCESSOR))
+//          }
 
           val info = MethodInlineInfo(
             effectivelyFinal                    = effectivelyFinal,
-            traitMethodWithStaticImplementation = traitMethodWithStaticImplementation,
+            traitMethodWithStaticImplementation = false, //traitMethodWithStaticImplementation,
             annotatedInline                     = methodSym.hasAnnotation(ScalaInlineClass),
             annotatedNoInline                   = methodSym.hasAnnotation(ScalaNoInlineClass)
           )
