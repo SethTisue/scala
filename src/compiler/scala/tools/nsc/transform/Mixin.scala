@@ -1060,11 +1060,12 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
           isOverriddenAccessor(other.getterIn(other.owner), clazz.info.baseClasses)
         }
 
+      // Emitting code for Function[0|1|2]
       if (isFunctionSymbol(clazz) && clazz.isSpecialized) {
         val sym = clazz.info.decl(nme.apply)
         // <default> def apply(v1: Object)Object = apply(v1.unbox).box
         val functionClass = clazz.baseClasses(1)
-        val genericApply = functionClass.info.member(nme.apply)
+        val genericApply = functionClass.info.member(nme.apply) // why `member` and not `decl`?
         val bridge = genericApply.cloneSymbol(clazz, /*BRIDGE |*/ METHOD | JAVA_DEFAULTMETHOD | DEFERRED).setPos(sym.pos)
         addDefDef(bridge,
           Apply(gen.mkAttributedSelect(gen.mkAttributedThis(sym.owner), sym), bridge.paramss.head.map(p => gen.mkAttributedIdent(p))))
@@ -1183,11 +1184,12 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
           qual
 
         case dd @ DefDef(_, _, _, vparamss, _, EmptyTree) if isFunctionSymbol(sym.owner) =>
+          // why only exclude toString?
           val addDefault = enteringPhase(currentRun.erasurePhase.prev)(!sym.isDeferred) && sym.name != nme.toString_ // before lateDEFERRED
           if (addDefault) {
             def implSym = implClass(sym.owner).info.member(sym.name)
             sym.setFlag(Flags.JAVA_DEFAULTMETHOD)
-            val tree = Apply(staticRef(implSym), gen.mkAttributedThis(sym.owner) :: sym.paramss.head.map(gen.mkAttributedRef))
+            val tree = Apply(staticRef(implSym), gen.mkAttributedThis(sym.owner) :: sym.paramss.head.map(gen.mkAttributedIdent))
             val app = typedPos(tree.pos)(tree)
             copyDefDef(dd)(rhs = app)
           } else if (sym.owner.isSpecialized && sym.name == nme.apply) {
