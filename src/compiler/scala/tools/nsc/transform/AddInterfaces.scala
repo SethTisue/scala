@@ -113,6 +113,7 @@ abstract class AddInterfaces extends InfoTransform { self: Erasure =>
 
   /** Return the implementation class of a trait; create a new one of one does not yet exist */
   def implClass(iface: Symbol): Symbol = {
+    assert(iface.needsImplClass)
     iface.info
 
     implClassMap.getOrElse(iface, enteringPhase(implClassPhase) {
@@ -311,7 +312,7 @@ abstract class AddInterfaces extends InfoTransform { self: Erasure =>
     }
     val mixinConstructorCalls: List[Tree] = {
       for (mc <- clazz.mixinClasses.reverse
-           if mc.hasFlag(lateINTERFACE))
+           if mc.hasFlag(lateINTERFACE)) // implies mc.needsImplClass
       yield mixinConstructorCall(implClass(mc))
     }
     tree match {
