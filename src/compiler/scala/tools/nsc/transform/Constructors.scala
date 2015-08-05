@@ -13,6 +13,11 @@ import symtab.Flags._
 
 /** This phase converts classes with parameters into Java-like classes with
  *  fields, which are assigned to from constructors.
+  *
+  *  TODO: for traits, we drop field definitions,
+  *  introducing trait field setters to abstract over them in the init method
+  *  mixins will add back fields and implementations for the setters to
+  *  the classes that immediately extend the given trait
  */
 abstract class Constructors extends Statics with Transform with ast.TreeDSL {
   import global._
