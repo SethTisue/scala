@@ -31,17 +31,27 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
 
 // --------- helper functions -----------------------------------------------
 
-  /** A member of a trait is implemented statically if its implementation after the
-   *  mixin transform is in the static implementation module. To be statically
-   *  implemented, a member must be a method that belonged to the trait's implementation class
-   *  before (i.e. it is not abstract). Not statically implemented are
-   *   - non-private modules: these are implemented directly in the mixin composition class
-   *     (private modules, on the other hand, are implemented statically, but their
-   *      module variable is not. all such private modules are lifted, because
-   *      non-lifted private modules have been eliminated in ExplicitOuter)
-   *   - field accessors and superaccessors, except for lazy value accessors which become initializer
-   *     methods in the impl class (because they can have arbitrary initializers)
-   */
+  // TODO: not much of this makes sense, and I can't reproduce this with examples
+  /** To be statically implemented, a trait member must be a method that
+    * belonged to the trait's implementation class before (i.e. it is not abstract).
+    *
+    * In other words (???), its implementation after the mixin transform
+    * is in the static implementation module.
+    *
+    * Non-private modules are implemented non-statically:
+    * they are implemented directly in the mixin composition class.
+    *
+    * Private modules are implemented statically, but their
+    * module variable is not. Private modules are known to have been lifted,
+    * because non-lifted private modules have been eliminated in ExplicitOuter.
+    *
+    * Not statically implemented are
+    * -
+    * - field accessors and superaccessors, except for
+    *
+    * Lazy value accessors become initializer methods in the impl class
+    * because they can have arbitrary initializers.
+    */
   private def isImplementedStatically(sym: Symbol) = (
        sym.owner.isImplClass
     && sym.isMethod
