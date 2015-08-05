@@ -56,13 +56,15 @@ abstract class LazyVals extends Transform with TypingTransformers with ast.TreeD
     import symtab.Flags._
 
     /** Perform the following transformations:
-     *  - for a lazy accessor inside a method, make it check the initialization bitmap
-     *  - for all methods, add enough int vars to allow one flag per lazy local value
-     *  - blocks in template bodies behave almost like methods. A single bitmaps section is
-     *      added in the first block, for all lazy values defined in such blocks.
-     *  - remove ACCESSOR flags: accessors in traits are not statically implemented,
-     *    but moved to the host class. local lazy values should be statically implemented.
-     */
+      * - for a lazy accessor inside a method, make it check the initialization bitmap
+      * - for all methods, add enough int vars to allow one flag per lazy local value
+      * - blocks in template bodies behave almost like methods. A single bitmaps section is
+      * added in the first block, for all lazy values defined in such blocks.
+      * - remove ACCESSOR flags:
+      *   - accessors in traits are not statically implemented, but moved to the host class.
+      *     see LocalLazyVal in test/files/run/lazy-traits.scala (8d96aea0a2) -- TODO: affected by new trait compilation (default methods)?
+      *   - local lazy values should be statically implemented.
+      */
     override def transform(tree: Tree): Tree = {
       val sym = tree.symbol
       curTree = tree
