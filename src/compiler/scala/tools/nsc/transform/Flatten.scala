@@ -41,8 +41,8 @@ abstract class Flatten extends InfoTransform {
   }
   private def liftSymbol(sym: Symbol) {
     liftClass(sym)
-    if (sym.needsImplClass)
-      liftClass(erasure implClass sym)
+//    if (sym.needsImplClass)
+//      liftClass(erasure implClass sym)
   }
   // This is a short-term measure partially working around objects being
   // lifted out of parameterized classes, leaving them referencing
