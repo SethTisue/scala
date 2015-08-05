@@ -111,7 +111,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
   /** The implementation class corresponding to a currently compiled interface.
    *  todo: try to use Symbol.implClass instead?
    */
-  private def implClass(iface: Symbol) = iface.implClass orElse (erasure implClass iface)
+  private def implClass(iface: Symbol) = iface.implClass //orElse (erasure implClass iface)
 
   /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
    *
@@ -191,15 +191,14 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
     newSym
   }
 
-  /** Add getters and setters for all non-module fields of an implementation
-   *  class to its interface unless they are already present. This is done
-   *  only once per class. The mixedin flag is used to remember whether late
-   *  members have been added to an interface.
-   *    - lazy fields don't get a setter.
-   */
-  def addLateInterfaceMembers(clazz: Symbol) {
-    if (treatedClassInfos(clazz) != clazz.info) {
-      treatedClassInfos(clazz) = clazz.info
+  /** Add getters and setters for all non-module fields of `mixinClass`'s implementation class
+    * to `mixinClass`, unless they are already present. This is done only once per class.
+    * The mixedin flag is used to remember whether late members have been added to an interface.
+    * Lazy fields don't get a setter.
+    */
+  def addLateInterfaceMembers(mixinClass: Symbol) {
+    if (treatedClassInfos(mixinClass) != mixinClass.info) {
+      treatedClassInfos(mixinClass) = mixinClass.info
       assert(phase == currentRun.mixinPhase, phase)
 
       /* Create a new getter. Getters are never private or local. They are
@@ -208,7 +207,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
         // println("creating new getter for "+ field +" : "+ field.info +" at "+ field.locationString+(field hasFlag MUTABLE))
         val newFlags = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED | ( if (field.isMutable) 0 else STABLE )
         // TODO preserve pre-erasure info?
-        clazz.newMethod(field.getterName, field.pos, newFlags) setInfo MethodType(Nil, field.info)
+        mixinClass.newMethod(field.getterName, field.pos, newFlags) setInfo MethodType(Nil, field.info)
       }
 
       /* Create a new setter. Setters are never private or local. They are
@@ -217,33 +216,33 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
         //println("creating new setter for "+field+field.locationString+(field hasFlag MUTABLE))
         val setterName = field.setterName
         val newFlags   = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED
-        val setter     = clazz.newMethod(setterName, field.pos, newFlags)
+        val setter     = mixinClass.newMethod(setterName, field.pos, newFlags)
         // TODO preserve pre-erasure info?
         setter setInfo MethodType(setter.newSyntheticValueParams(List(field.info)), UnitTpe)
         if (field.needsExpandedSetterName)
-          setter.name = nme.expandedSetterName(setter.name, clazz)
+          setter.name = nme.expandedSetterName(setter.name, mixinClass)
 
         setter
       }
 
-      clazz.info // make sure info is up to date, so that implClass is set.
-      val impl = implClass(clazz) orElse abort("No impl class for " + clazz)
+      mixinClass.info // make sure info is up to date, so that implClass is set.
+      val impl = implClass(mixinClass) orElse abort("No impl class for " + mixinClass)
 
       for (member <- impl.info.decls) {
         if (!member.isMethod && !member.isModule && !member.isModuleVar) {
           assert(member.isTerm && !member.isDeferred, member)
           if (member.getterIn(impl).isPrivate) {
-            member.makeNotPrivate(clazz) // this will also make getter&setter not private
+            member.makeNotPrivate(mixinClass) // this will also make getter&setter not private
           }
-          val getter = member.getterIn(clazz)
-          if (getter == NoSymbol) addMember(clazz, newGetter(member))
+          val getter = member.getterIn(mixinClass)
+          if (getter == NoSymbol) addMember(mixinClass, newGetter(member))
           if (!member.tpe.isInstanceOf[ConstantType] && !member.isLazy) {
-            val setter = member.setterIn(clazz)
-            if (setter == NoSymbol) addMember(clazz, newSetter(member))
+            val setter = member.setterIn(mixinClass)
+            if (setter == NoSymbol) addMember(mixinClass, newSetter(member))
           }
         }
       }
-      debuglog("new defs of " + clazz + " = " + clazz.info.decls)
+      debuglog("new defs of " + mixinClass + " = " + mixinClass.info.decls)
     }
   }
 

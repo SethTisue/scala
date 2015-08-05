@@ -12,7 +12,7 @@ import symtab._
 import Flags._
 import scala.reflect.internal.Mode._
 
-abstract class Erasure extends scala.reflect.internal.transform.Erasure
+abstract class Erasure extends InfoTransform with scala.reflect.internal.transform.Erasure
                           with typechecker.Analyzer
                           with TypingTransformers
                           with ast.TreeDSL

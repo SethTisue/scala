@@ -824,7 +824,7 @@ abstract class BTypes {
     def info_=(i: Either[NoClassBTypeInfo, ClassInfo]): Unit = {
       assert(_info == null, s"Cannot set ClassBType.info multiple times: $this")
       _info = i
-      checkInfoConsistency()
+      // checkInfoConsistency()
     }
 
     classBTypeFromInternalName(internalName) = this
