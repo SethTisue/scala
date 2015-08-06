@@ -144,7 +144,7 @@ trait MethodSynthesis {
           val lazyValGetter = LazyValGetter(tree).createAndEnterSymbol()
           enterLazyVal(tree, lazyValGetter)
         } else {
-          if (mods.isPrivateLocal)
+          if (mods.isPrivateLocal && mods.isCaseAccessor)
             PrivateThisCaseClassParameterError(tree)
           val getter = Getter(tree)
           val getterSym = getter.createAndEnterSymbol()
@@ -152,8 +152,9 @@ trait MethodSynthesis {
           if (mods.isMutable)
             Setter(tree).createAndEnterSymbol()
 
-          // If abstract, the tree gets the getter's symbol.  Otherwise, create a field.
-          if (getter.isDeferred) getterSym setPos tree.pos
+          // Create a field if the getter requires storage, otherwise,
+          // the getter's abstract and the tree gets the getter's symbol.
+          if (getter.noFieldNeeded) getterSym setPos tree.pos
           else enterStrictVal(tree)
         }
 
@@ -306,6 +307,9 @@ trait MethodSynthesis {
       def derivedSym: Symbol = tree.symbol
       def derivedTree: Tree  = EmptyTree
 
+      // or no field *possible*, in the case of a trait! (NOTE: basisSym is not set yet when called from enterGetterSetter)
+      def noFieldNeeded = (isDeferred || owner.isTrait || (mods.isLazy && hasUnitType(basisSym)))
+
       def isSetter   = false
       def isDeferred = mods.isDeferred
       def keepClean  = false  // whether annotations whose definitions are not meta-annotated should be kept.
@@ -381,8 +385,8 @@ trait MethodSynthesis {
       }
     }
     case class Getter(tree: ValDef) extends BaseGetter(tree) {
-      override def derivedSym = if (isDeferred) basisSym  else basisSym.getterIn(enclClass)
-      private def derivedRhs  = if (isDeferred) EmptyTree else fieldSelection
+      override def derivedSym = if (isDeferred || owner.isTrait) basisSym  else basisSym.getterIn(enclClass)
+      private def derivedRhs  = if (isDeferred || owner.isTrait) EmptyTree else fieldSelection
       private def derivedTpt = {
         // For existentials, don't specify a type for the getter, even one derived
         // from the symbol! This leads to incompatible existentials for the field and
@@ -428,10 +432,9 @@ trait MethodSynthesis {
       override def derivedTree: DefDef = {
         val ValDef(_, _, tpt0, rhs0) = tree
         val rhs1 = context.unit.transformed.getOrElse(rhs0, rhs0)
-        val body = (
-          if (tree.symbol.owner.isTrait || hasUnitType(basisSym)) rhs1
-          else gen.mkAssignAndReturn(basisSym, rhs1)
-        )
+        val body = if (noFieldNeeded) rhs1
+                   else gen.mkAssignAndReturn(basisSym, rhs1)
+
         derivedSym setPos tree.pos // cannot set it at createAndEnterSymbol because basisSym can possibly still have NoPosition
         val ddefRes = DefDef(derivedSym, new ChangeOwnerAndModuleClassTraverser(basisSym, derivedSym)(body))
         // ValDef will have its position focused whereas DefDef will have original correct rangepos
@@ -460,10 +463,7 @@ trait MethodSynthesis {
       override def keepClean = !mods.isParamAccessor
 
       override def derivedSym =
-        if ( isDeferred
-          || mods.isLazy && hasUnitType(basisSym)
-          || basisSym.owner.isTrait
-           ) NoSymbol
+        if (noFieldNeeded) NoSymbol
         else super.derivedSym
 
       override def derivedTree = (

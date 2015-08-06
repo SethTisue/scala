@@ -118,13 +118,11 @@ trait Namers extends MethodSynthesis {
     // PRIVATE | LOCAL are fields generated for primary constructor arguments
     // @PP: ...or fields declared as private[this].  PARAMACCESSOR marks constructor arguments.
     // Neither gets accessors so the code is as far as I know still correct.
-    def noEnterGetterSetter(vd: ValDef) = !vd.mods.isLazy && (
-         !owner.isClass
-      || (vd.mods.isPrivateLocal && !vd.mods.isCaseAccessor)
-      || (vd.name startsWith nme.OUTER)
-      || (context.unit.isJava)
-      || isEnumConstant(vd)
-    )
+    // TODO: this is duplicative with MethodSynthesis
+    def omitGetterSetterInClass(vd: ValDef) = (
+           (vd.mods.isPrivateLocal && !vd.mods.isCaseAccessor)
+        || (vd.name startsWith nme.OUTER)
+        || isEnumConstant(vd))
 
     def noFinishGetterSetter(vd: ValDef) = (
          (vd.mods.isPrivateLocal && !vd.mods.isLazy) // all lazy vals need accessors, even private[this]
@@ -655,14 +653,14 @@ trait Namers extends MethodSynthesis {
       }
     }
 
-    def enterValDef(tree: ValDef) {
-      if (noEnterGetterSetter(tree))
-        assignAndEnterFinishedSymbol(tree)
+    def enterValDef(vd: ValDef) {
+      if (!context.unit.isJava && (vd.mods.isLazy || owner.isTrait || (owner.isClass && !omitGetterSetterInClass(vd))))
+        enterGetterSetter(vd)
       else
-        enterGetterSetter(tree)
+        assignAndEnterFinishedSymbol(vd)
 
-      if (isEnumConstant(tree))
-        tree.symbol setInfo ConstantType(Constant(tree.symbol))
+      if (isEnumConstant(vd))
+        vd.symbol setInfo ConstantType(Constant(vd.symbol))
     }
 
     def enterLazyVal(tree: ValDef, lazyAccessor: Symbol): TermSymbol = {
@@ -673,6 +671,7 @@ trait Namers extends MethodSynthesis {
       // via "x$lzy" as can be seen in test #3927.
       val sym = (
         if (owner.isClass) createFieldSymbol(tree)
+          // TODO owner.isTrait
         else owner.newValue(tree.name append nme.LAZY_LOCAL, tree.pos, (tree.mods.flags | ARTIFACT) & ~IMPLICIT)
       )
       enterValSymbol(tree, sym setFlag MUTABLE setLazyAccessor lazyAccessor)
