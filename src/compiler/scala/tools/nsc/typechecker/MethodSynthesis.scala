@@ -460,8 +460,12 @@ trait MethodSynthesis {
       override def keepClean = !mods.isParamAccessor
 
       override def derivedSym =
-        if (isDeferred || (mods.isLazy && hasUnitType(basisSym))) NoSymbol
+        if ( isDeferred
+          || mods.isLazy && hasUnitType(basisSym)
+          || basisSym.owner.isTrait
+           ) NoSymbol
         else super.derivedSym
+
       override def derivedTree = (
         if (derivedSym eq NoSymbol) EmptyTree
         else if (mods.isLazy) copyValDef(tree)(mods = mods | flagsExtra, name = this.name, rhs = EmptyTree).setPos(tree.pos.focus)
