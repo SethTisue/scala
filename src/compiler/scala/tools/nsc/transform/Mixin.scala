@@ -217,61 +217,6 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
     newSym
   }
 
-  /** Add getters and setters for all non-module fields of `mixinClass`'s implementation class
-    * to `mixinClass`, unless they are already present. This is done only once per class.
-    * The mixedin flag is used to remember whether late members have been added to an interface.
-    * Lazy fields don't get a setter.
-    */
-//  def addLateInterfaceMembers(mixinClass: Symbol) {
-//    if (treatedClassInfos(mixinClass) != mixinClass.info) {
-//      treatedClassInfos(mixinClass) = mixinClass.info
-//      assert(phase == currentRun.mixinPhase, phase)
-//
-//      /* Create a new getter. Getters are never private or local. They are
-//       *  always accessors and deferred. */
-//      def newGetter(field: Symbol): Symbol = {
-//        // println("creating new getter for "+ field +" : "+ field.info +" at "+ field.locationString+(field hasFlag MUTABLE))
-//        val newFlags = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED | ( if (field.isMutable) 0 else STABLE )
-//        // TODO preserve pre-erasure info?
-//        mixinClass.newMethod(field.getterName, field.pos, newFlags) setInfo MethodType(Nil, field.info)
-//      }
-//
-//      /* Create a new setter. Setters are never private or local. They are
-//       * always accessors and deferred. */
-//      def newSetter(field: Symbol): Symbol = {
-//        //println("creating new setter for "+field+field.locationString+(field hasFlag MUTABLE))
-//        val setterName = field.setterName
-//        val newFlags   = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED
-//        val setter     = mixinClass.newMethod(setterName, field.pos, newFlags)
-//        // TODO preserve pre-erasure info?
-//        setter setInfo MethodType(setter.newSyntheticValueParams(List(field.info)), UnitTpe)
-//        if (field.needsExpandedSetterName)
-//          setter.name = nme.expandedSetterName(setter.name, mixinClass)
-//
-//        setter
-//      }
-//
-//      mixinClass.info // make sure info is up to date, so that implClass is set.
-//      val impl = implClass(mixinClass) orElse abort("No impl class for " + mixinClass)
-//
-//      for (member <- impl.info.decls) {
-//        if (!member.isMethod && !member.isModule && !member.isModuleVar) {
-//          assert(member.isTerm && !member.isDeferred, member)
-//          if (member.getterIn(impl).isPrivate) {
-//            member.makeNotPrivate(mixinClass) // this will also make getter&setter not private
-//          }
-//          val getter = member.getterIn(mixinClass)
-//          if (getter == NoSymbol) addMember(mixinClass, newGetter(member))
-//          if (!member.tpe.isInstanceOf[ConstantType] && !member.isLazy) {
-//            val setter = member.setterIn(mixinClass)
-//            if (setter == NoSymbol) addMember(mixinClass, newSetter(member))
-//          }
-//        }
-//      }
-//      debuglog("new defs of " + mixinClass + " = " + mixinClass.info.decls)
-//    }
-//  }
-
   /** Add all members to be mixed in into a (non-trait-) class
    *  These are:
    *    for every mixin trait T that is not also inherited by the superclass:
@@ -355,13 +300,11 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
     for (mc <- clazz.mixinClasses ; if mc hasFlag lateINTERFACE) {
       // @SEAN: adding trait tracking so we don't have to recompile transitive closures
       unit.depends += mc
-//      addLateInterfaceMembers(mc)
 
       // For all members of a trait's interface do:
       for (mixinMember <- mc.info.decls)
         implementedMembers(mc, mixinMember) foreach (addMember(clazz, _))
 
-//      mixinImplClassMembers(implClass(mc), mc)
     }
   }
 
