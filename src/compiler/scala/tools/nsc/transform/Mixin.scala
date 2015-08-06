@@ -351,54 +351,30 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
    *   - The parents of every class are mapped from implementation class to interface
    *   - Implementation classes become modules that inherit nothing
    *     and that define all.
+    *
+    *  Moved from explicit outer:
+    *   5. Make all super accessors and modules in traits non-private,
+    *      mangling their names.
+    *   6. Remove protected flag from all members of traits.
+    *   7. All local (private[this]) fields of traits are made not-private. See SI-2946.
+    *      Strictly speaking only necessary when the field is referenced
+    *      by an inner class, as that class will be lifted out of the
+    *      access boundary of the private[this] member. To enable separate compilation,
+    *      we must always transform, since other compilation runs have no way of knowing
+    *      whether the field was accessed (and thus its name was mangled by
+    *      makeNotPrivate to emulate privacy for public members) or not.
    */
-  override def transformInfo(sym: Symbol, tp: Type): Type = tp match {
-    case ClassInfoType(parents, decls, clazz) =>
-      var parents1 = parents
-      var decls1 = decls
-      if (!clazz.isPackageClass) {
-        exitingMixin(clazz.owner.info)
-        if (clazz.isImplClass) {
-          clazz setFlag lateMODULE
-          var sourceModule = clazz.owner.info.decls.lookup(sym.name.toTermName)
-          if (sourceModule == NoSymbol) {
-            sourceModule = (
-              clazz.owner.newModuleSymbol(sym.name.toTermName, sym.pos, MODULE)
-                setModuleClass sym.asInstanceOf[ClassSymbol]
-            )
-            clazz.owner.info.decls enter sourceModule
-          }
-          else {
-            sourceModule setPos sym.pos
-            if (sourceModule.flags != MODULE) {
-              log(s"!!! Directly setting sourceModule flags for $sourceModule from ${sourceModule.flagString} to MODULE")
-              sourceModule.flags = MODULE
-            }
-          }
-          sourceModule setInfo sym.tpe
-          // Companion module isn't visible for anonymous class at this point anyway
-          assert(clazz.sourceModule != NoSymbol || clazz.isAnonymousClass,  s"$clazz has no sourceModule: $sym ${sym.tpe}")
-          parents1 = List()
-          decls1 = newScopeWith(decls.toList filter isImplementedStatically: _*)
-        } else if (!parents.isEmpty) {
-          parents1 = parents.head :: (parents.tail map toInterface)
-        }
-      }
-      //decls1 = enteringPhase(phase.next)(newScopeWith(decls1.toList: _*))//debug
-      if ((parents1 eq parents) && (decls1 eq decls)) tp
-      else ClassInfoType(parents1, decls1, clazz)
-
-    case MethodType(params, restp) =>
-      toInterfaceMap(
-        if (isImplementedStatically(sym)) {
-          val ownerParam = sym.newSyntheticValueParam(toInterface(sym.owner.typeOfThis))
-          MethodType(ownerParam :: params, restp)
-        } else
-          tp)
-
-    case _ =>
-      tp
+  override def transformInfo(sym: Symbol, tp: Type): Type = {
+    if (sym.owner.isTrait) {
+      // can we just do this from the start?
+      if ((sym hasFlag (ACCESSOR | SUPERACCESSOR))
+        || sym.isModule // 5
+        || sym.isLocalToThis) // 7 TODO what did `&& sym.getterIn(sym.owner.toInterface) == NoSymbol` do?
+        sym.makeNotPrivate(sym.owner)
+    }
+    tp
   }
+
 
   /** Return a map of single-use fields to the lazy value that uses them during initialization.
    *  Each field has to be private and defined in the enclosing class, and there must

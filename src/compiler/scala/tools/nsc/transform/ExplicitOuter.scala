@@ -134,16 +134,6 @@ abstract class ExplicitOuter extends InfoTransform
     *   4. Also add overriding accessor defs to every class that inherits
     *      mixin classes with outer accessor defs (unless the superclass
     *      already inherits the same mixin).
-    *   5. Make all super accessors and modules in traits non-private,
-    *      mangling their names.
-    *   6. Remove protected flag from all members of traits.
-    *   7. Local fields of traits need to be unconditionally unprivatized. See SI-2946.
-    *      Strictly speaking only necessary when the field is referenced
-    *      by an inner class, as that class will be lifted out of the
-    *      access boundary of the private[this] member. To enable separate compilation,
-    *      we must always transform, since other compilation runs have no way of knowing
-    *      whether the field was accessed (and thus its name was mangled by
-    *      makeNotPrivate to emulate privacy for public members) or not.
     *
     * Note: this transformInfo need not be reflected as the JVM reflection already
     * elides outer pointers.
@@ -151,10 +141,6 @@ abstract class ExplicitOuter extends InfoTransform
   def transformInfo(sym: Symbol, tp: Type): Type = tp match {
     case MethodType(params, restpe1) =>
       val restpe = transformInfo(sym, restpe1)
-      if (sym.owner.isTrait && ((sym hasFlag (ACCESSOR | SUPERACCESSOR)) || sym.isModule)) { // 5
-        sym.makeNotPrivate(sym.owner)
-      }
-      if (sym.owner.isTrait && sym.isProtected) sym setFlag notPROTECTED // 6
       if (sym.isClassConstructor && isInner(sym.owner)) { // 1
         val p = sym.newValueParameter(innerClassConstructorParamName, sym.pos)
                    .setInfo(sym.owner.outerClass.thisType)
@@ -193,11 +179,7 @@ abstract class ExplicitOuter extends InfoTransform
       val restp1 = transformInfo(sym, restp)
       if (restp eq restp1) tp else PolyType(tparams, restp1)
 
-    case _ =>
-      if (sym.owner.isTrait && sym.isLocalToThis &&
-              (sym.getterIn(sym.owner.toInterface) == NoSymbol)) // 7
-        sym.makeNotPrivate(sym.owner)
-      tp
+    case tp => tp
   }
 
   /** A base class for transformers that maintain outerParam
