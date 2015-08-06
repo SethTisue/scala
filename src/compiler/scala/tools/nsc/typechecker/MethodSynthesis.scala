@@ -139,23 +139,24 @@ trait MethodSynthesis {
       if (nme.isSetterName(name))
         ValOrValWithSetterSuffixError(tree)
 
-      tree.symbol = (
+      tree.symbol =
         if (mods.isLazy) {
           val lazyValGetter = LazyValGetter(tree).createAndEnterSymbol()
           enterLazyVal(tree, lazyValGetter)
         } else {
           if (mods.isPrivateLocal)
             PrivateThisCaseClassParameterError(tree)
-          val getter = Getter(tree).createAndEnterSymbol()
+          val getter = Getter(tree)
+          val getterSym = getter.createAndEnterSymbol()
           // Create the setter if necessary.
           if (mods.isMutable)
             Setter(tree).createAndEnterSymbol()
 
           // If abstract, the tree gets the getter's symbol.  Otherwise, create a field.
-          if (mods.isDeferred) getter setPos tree.pos
+          if (getter.isDeferred) getterSym setPos tree.pos
           else enterStrictVal(tree)
         }
-      )
+
 
       enterBeans(tree)
     }
@@ -181,7 +182,7 @@ trait MethodSynthesis {
         // If we don't save the annotations, they seem to wander off.
         val annotations = stat.symbol.initialize.annotations
         val trees = (
-          allValDefDerived(vd)
+          (Field(vd) :: standardAccessors(vd) ::: beanAccessors(vd))
                 map (acc => atPos(vd.pos.focus)(acc derive annotations))
           filterNot (_ eq EmptyTree)
         )
@@ -221,11 +222,11 @@ trait MethodSynthesis {
         stat :: Nil
       }
 
-    def standardAccessors(vd: ValDef): List[DerivedFromValDef] = (
+    def standardAccessors(vd: ValDef): List[DerivedFromValDef] =
       if (vd.mods.isMutable && !vd.mods.isLazy) List(Getter(vd), Setter(vd))
       else if (vd.mods.isLazy) List(LazyValGetter(vd))
       else List(Getter(vd))
-    )
+
     def beanAccessors(vd: ValDef): List[DerivedFromValDef] = {
       val setter = if (vd.mods.isMutable) List(BeanSetter(vd)) else Nil
       if (vd.symbol hasAnnotation BeanPropertyAttr)
@@ -233,11 +234,6 @@ trait MethodSynthesis {
       else if (vd.symbol hasAnnotation BooleanBeanPropertyAttr)
         BooleanBeanGetter(vd) :: setter
       else Nil
-    }
-    def allValDefDerived(vd: ValDef) = {
-      val field = if (vd.mods.isDeferred || (vd.mods.isLazy && hasUnitType(vd.symbol))) Nil
-                  else List(Field(vd))
-      field ::: standardAccessors(vd) ::: beanAccessors(vd)
     }
 
     // Take into account annotations so that we keep annotated unit lazy val
@@ -341,10 +337,10 @@ trait MethodSynthesis {
         case (p :: Nil) :: _  => p
         case _                => NoSymbol
       }
-      private def setterRhs = (
-        if (mods.isDeferred || derivedSym.isOverloaded) EmptyTree
+      private def setterRhs =
+        if (isDeferred || derivedSym.isOverloaded) EmptyTree
         else Assign(fieldSelection, Ident(setterParam))
-      )
+
       private def setterDef = DefDef(derivedSym, setterRhs)
       override def derivedTree: Tree = if (setterParam == NoSymbol) EmptyTree else setterDef
     }
@@ -385,8 +381,8 @@ trait MethodSynthesis {
       }
     }
     case class Getter(tree: ValDef) extends BaseGetter(tree) {
-      override def derivedSym = if (mods.isDeferred) basisSym else basisSym.getterIn(enclClass)
-      private def derivedRhs  = if (mods.isDeferred) EmptyTree else fieldSelection
+      override def derivedSym = if (isDeferred) basisSym  else basisSym.getterIn(enclClass)
+      private def derivedRhs  = if (isDeferred) EmptyTree else fieldSelection
       private def derivedTpt = {
         // For existentials, don't specify a type for the getter, even one derived
         // from the symbol! This leads to incompatible existentials for the field and
@@ -400,7 +396,7 @@ trait MethodSynthesis {
           // Range position errors ensue if we don't duplicate this in some
           // circumstances (at least: concrete vals with existential types.)
           case ExistentialType(_, _)  => TypeTree() setOriginal (tree.tpt.duplicate setPos tree.tpt.pos.focus)
-          case _ if mods.isDeferred   => TypeTree() setOriginal tree.tpt // keep type tree of original abstract field
+          case _ if isDeferred        => TypeTree() setOriginal tree.tpt // keep type tree of original abstract field
           case tp                     => TypeTree(tp)
         }
         tpt setPos tree.tpt.pos.focus
@@ -462,8 +458,12 @@ trait MethodSynthesis {
       // By default annotations go to the field, except if the field is
       // generated for a class parameter (PARAMACCESSOR).
       override def keepClean = !mods.isParamAccessor
+
+      override def derivedSym =
+        if (isDeferred || (mods.isLazy && hasUnitType(basisSym))) NoSymbol
+        else super.derivedSym
       override def derivedTree = (
-        if (mods.isDeferred) EmptyTree
+        if (derivedSym eq NoSymbol) EmptyTree
         else if (mods.isLazy) copyValDef(tree)(mods = mods | flagsExtra, name = this.name, rhs = EmptyTree).setPos(tree.pos.focus)
         else copyValDef(tree)(mods = mods | flagsExtra, name = this.name)
       )
