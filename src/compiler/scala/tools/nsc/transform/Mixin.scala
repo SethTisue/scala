@@ -10,6 +10,22 @@ import symtab._
 import reflect.internal.Flags._
 import scala.collection.{ mutable, immutable }
 
+/** TODO: this describes my current goal for the trait-default scheme, not (yet) the actual implementation
+  *
+  * So far, we've tried to treat classes and traits in the same way as much as possible.
+  * Except, for traits:
+  *   - no field symbols are entered (pretend the val is abstract)
+  *   - lazy val is an abstract getter and a concrete method to compute the rhs (and perform its side-effects)
+  *   - accessors for fields, outer pointers and super calls are abstract
+  *
+  * In classes that extends traits, it's time to face the music:
+  *   - an overriding method is added for each trait method definition with the override keyword (TODO: refine)
+  *   - fields are created
+  *   - accessors are implemented (for fields, outers & supers)
+  *   - lazy vals get bitmaps, getter does its lazy thing, using the compute method in the trait
+  *
+  *
+  */
 abstract class Mixin extends InfoTransform with ast.TreeDSL {
   import global._
   import definitions._
@@ -263,7 +279,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
    *      - for every super accessor in T, add an implementation of that accessor
    *      - for every module in T, add a module
    */
-  def implementTraitMembers(clazz: Symbol, unit: CompilationUnit) = {
+  def implementTraitMembers(clazz: Symbol, unit: CompilationUnit): Unit = {
 
     /* Mix in members of trait mixinClass into class clazz. Also,
      * for each lazy field in mixinClass, add a link from its mixed in member to its
@@ -273,7 +289,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
       if (isConcreteAccessor(traitMember)) {
         if (isOverriddenAccessor(traitMember, clazz.info.baseClasses)) {
           devWarning(s"Overridden concrete accessor: ${traitMember.fullLocationString}")
-          None
+          Nil
         }
         else {
           // mixin field accessors
@@ -284,28 +300,30 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
                 orElse abort("Could not find initializer for " + traitMember.name)
             )
           }
-          val field = if (!traitMember.isSetter)
-            traitMember.tpe match {
-              // No field needed for constant or unit-valued field
-              case MethodType(Nil, ConstantType(_) | TypeRef(_, UnitClass, _)) =>  Nil
-              case _ => // otherwise mixin a field based on the
-                // #3857, need to retain info before erasure when cloning (since cloning only
-                // carries over the current entry in the type history)
-                val sym = enteringErasure {
-                  // so we have a type history entry before erasure
-                  clazz.newValue(traitMember.localName, traitMember.pos).setInfo(traitMember.tpe.resultType)
-                }
-                sym updateInfo traitMember.tpe.resultType // info at current phase
+          val field =
+            if (!traitMember.isSetter)
+              traitMember.tpe match {
+                // No field needed for constant or unit-valued field
+                case MethodType(Nil, ConstantType(_) | TypeRef(_, UnitClass, _)) => Nil
+                case _ => // otherwise mixin a field based on the
+                  // #3857, need to retain info before erasure when cloning (since cloning only
+                  // carries over the current entry in the type history)
+                  val sym = enteringErasure {
+                    // so we have a type history entry before erasure
+                    clazz.newValue(traitMember.localName, traitMember.pos).setInfo(traitMember.tpe.resultType)
+                  }
+                  sym updateInfo traitMember.tpe.resultType // info at current phase
 
-                val newFlags = (
-                    ( PrivateLocal )
-                  | ( traitMember getFlag MUTABLE | LAZY)
-                  | ( if (traitMember.hasStableFlag) 0 else MUTABLE )
-                )
+                  val newFlags = (
+                    (PrivateLocal)
+                      | (traitMember getFlag MUTABLE | LAZY)
+                      | (if (traitMember.hasStableFlag) 0 else MUTABLE)
+                    )
 
-                List(sym setFlag newFlags setAnnotations traitMember.annotations)
-            }
-          List(mixedInAccessor, field)
+                  List(sym setFlag newFlags setAnnotations traitMember.annotations)
+              } else Nil
+
+          mixedInAccessor :: field
         }
       } else if (traitMember.isSuperAccessor) { // mixin super accessors
         val superAccessor = traitMember.cloneSymbol(clazz) setPos clazz.pos
@@ -314,15 +332,15 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
         rebindSuper(clazz, traitMember.alias, traitClass) match {
           case NoSymbol =>
             reporter.error(clazz.pos, s"Member ${traitMember.alias} of mixin ${traitClass} is missing a concrete super implementation.")
-            None
+            Nil
           case alias1 =>
             superAccessor.asInstanceOf[TermSymbol] setAlias alias1
-            Some(superAccessor)
+            List(superAccessor)
         }
       } else if (traitMember.isMethod && traitMember.isModule && traitMember.hasNoFlags(LIFTED | BRIDGE)) {
         // mixin objects: todo what happens with abstract objects?
-        Some(traitMember.cloneSymbol(clazz, traitMember.flags & ~(DEFERRED | lateDEFERRED)) setPos clazz.pos)
-      }
+        List(traitMember.cloneSymbol(clazz, traitMember.flags & ~(DEFERRED | lateDEFERRED)) setPos clazz.pos)
+      } else Nil
 
 
     if (clazz.isJavaDefined || treatedClassInfos(clazz) == clazz.info)
@@ -1081,8 +1099,8 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
 
       // change every node type that refers to an implementation class to its
       // corresponding interface, unless the node's symbol is an implementation class.
-      if (tree.tpe.typeSymbol.isImplClass && ((sym eq null) || !sym.isImplClass))
-        tree modifyType toInterface
+//      if (tree.tpe.typeSymbol.isImplClass && ((sym eq null) || !sym.isImplClass))
+//        tree modifyType toInterface
 
       tree match {
         case templ @ Template(parents, self, body) =>
@@ -1151,12 +1169,13 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
             typedPos(tree.pos)(Apply(staticRef(target), transformSuper(qual) :: args))
           }
 
-          if (isStaticOnly(sym)) {
-            // change calls to methods which are defined only in implementation
-            // classes to static calls of methods in implementation modules
-            staticCall(sym)
-          }
-          else qual match {
+//          if (isStaticOnly(sym)) {
+//            // change calls to methods which are defined only in implementation
+//            // classes to static calls of methods in implementation modules
+//            staticCall(sym)
+//          }
+//          else
+          qual match {
             case Super(_, mix) =>
               // change super calls to methods in implementation classes to static calls.
               // Transform references super.m(args) as follows:
@@ -1192,22 +1211,23 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
         case Select(Super(_, _), name) =>
           tree
 
-        case Select(qual, name) if sym.owner.isImplClass && !isStaticOnly(sym) =>
-          assert(!sym.isMethod, "no method allowed here: %s%s %s".format(sym, sym.isImplOnly, sym.flagString))
-          // refer to fields in some implementation class via an abstract
-          // getter in the interface.
-          val iface  = toInterface(sym.owner.tpe).typeSymbol
-          val ifaceGetter = sym getterIn iface
-
-          if (ifaceGetter == NoSymbol) abort("No getter for " + sym + " in " + iface)
-          else typedPos(tree.pos)((qual DOT ifaceGetter)())
-
-        case Assign(Apply(lhs @ Select(qual, _), List()), rhs) =>
-          // assign to fields in some implementation class via an abstract
-          // setter in the interface.
-          def setter = lhs.symbol.setterIn(toInterface(lhs.symbol.owner.tpe).typeSymbol) setPos lhs.pos
-
-          typedPos(tree.pos)((qual DOT setter)(rhs))
+// TODO
+//        case Select(qual, name) if sym.owner.isImplClass && !isStaticOnly(sym) =>
+//          assert(!sym.isMethod, "no method allowed here: %s%s %s".format(sym, sym.isImplOnly, sym.flagString))
+//          // refer to fields in some implementation class via an abstract
+//          // getter in the interface.
+//          val iface  = toInterface(sym.owner.tpe).typeSymbol
+//          val ifaceGetter = sym getterIn iface
+//
+//          if (ifaceGetter == NoSymbol) abort("No getter for " + sym + " in " + iface)
+//          else typedPos(tree.pos)((qual DOT ifaceGetter)())
+//
+//        case Assign(Apply(lhs @ Select(qual, _), List()), rhs) =>
+//          // assign to fields in some implementation class via an abstract
+//          // setter in the interface.
+//          def setter = lhs.symbol.setterIn(toInterface(lhs.symbol.owner.tpe).typeSymbol) setPos lhs.pos
+//
+//          typedPos(tree.pos)((qual DOT setter)(rhs))
 
         case _ =>
           tree
