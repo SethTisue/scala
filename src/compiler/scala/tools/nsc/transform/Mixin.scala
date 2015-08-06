@@ -52,33 +52,33 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
     * Lazy value accessors become initializer methods in the impl class
     * because they can have arbitrary initializers.
     */
-  private def isImplementedStatically(sym: Symbol) = (
-       sym.owner.isImplClass
-    && sym.isMethod
-    && (!sym.isModule || sym.hasFlag(PRIVATE | LIFTED))
-    && (!(sym hasFlag (ACCESSOR | SUPERACCESSOR)) || sym.isLazy)
-  )
-
-  /** A member of a trait is static only if it belongs only to the
-   *  implementation class, not the interface, and it is implemented
-   *  statically.
-   */
-  private def isStaticOnly(sym: Symbol) =
-    isImplementedStatically(sym) && sym.isImplOnly
-
-  /** A member of a trait is forwarded if it is implemented statically and it
-   *  is also visible in the trait's interface. In that case, a forwarder to
-   *  the member's static implementation will be added to the class that
-   *  inherits the trait.
-   */
-  private def isForwarded(sym: Symbol) =
-    isImplementedStatically(sym) && !sym.isImplOnly
-
-  /** Maps the type of an implementation class to its interface;
-   *  maps all other types to themselves.
-   */
-  private def toInterface(tp: Type): Type =
-    enteringMixin(tp.typeSymbol.toInterface).tpe
+//  private def isImplementedStatically(sym: Symbol) = (
+//       sym.owner.isImplClass
+//    && sym.isMethod
+//    && (!sym.isModule || sym.hasFlag(PRIVATE | LIFTED))
+//    && (!(sym hasFlag (ACCESSOR | SUPERACCESSOR)) || sym.isLazy)
+//  )
+//
+//  /** A member of a trait is static only if it belongs only to the
+//   *  implementation class, not the interface, and it is implemented
+//   *  statically.
+//   */
+//  private def isStaticOnly(sym: Symbol) =
+//    isImplementedStatically(sym) && sym.isImplOnly
+//
+//  /** A member of a trait is forwarded if it is implemented statically and it
+//   *  is also visible in the trait's interface. In that case, a forwarder to
+//   *  the member's static implementation will be added to the class that
+//   *  inherits the trait.
+//   */
+//  private def isForwarded(sym: Symbol) =
+//    isImplementedStatically(sym) && !sym.isImplOnly
+//
+//  /** Maps the type of an implementation class to its interface;
+//   *  maps all other types to themselves.
+//   */
+//  private def toInterface(tp: Type): Type =
+//    enteringMixin(tp.typeSymbol.toInterface).tpe
 
   private def isFieldWithBitmap(field: Symbol) = {
     field.info // ensure that nested objects are transformed
@@ -110,13 +110,13 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
   /** Maps all parts of this type that refer to implementation classes to
    *  their corresponding interfaces.
    */
-  private val toInterfaceMap = new TypeMap {
-    def apply(tp: Type): Type = mapOver( tp match {
-      case TypeRef(pre, sym, args) if sym.isImplClass =>
-        typeRef(pre, enteringMixin(sym.toInterface), args)
-      case _ => tp
-    })
-  }
+//  private val toInterfaceMap = new TypeMap {
+//    def apply(tp: Type): Type = mapOver( tp match {
+//      case TypeRef(pre, sym, args) if sym.isImplClass =>
+//        typeRef(pre, enteringMixin(sym.toInterface), args)
+//      case _ => tp
+//    })
+//  }
 
   /** The implementation class corresponding to a currently compiled interface.
    *  todo: try to use Symbol.implClass instead?
@@ -206,157 +206,130 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
     * The mixedin flag is used to remember whether late members have been added to an interface.
     * Lazy fields don't get a setter.
     */
-  def addLateInterfaceMembers(mixinClass: Symbol) {
-    if (treatedClassInfos(mixinClass) != mixinClass.info) {
-      treatedClassInfos(mixinClass) = mixinClass.info
-      assert(phase == currentRun.mixinPhase, phase)
-
-      /* Create a new getter. Getters are never private or local. They are
-       *  always accessors and deferred. */
-      def newGetter(field: Symbol): Symbol = {
-        // println("creating new getter for "+ field +" : "+ field.info +" at "+ field.locationString+(field hasFlag MUTABLE))
-        val newFlags = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED | ( if (field.isMutable) 0 else STABLE )
-        // TODO preserve pre-erasure info?
-        mixinClass.newMethod(field.getterName, field.pos, newFlags) setInfo MethodType(Nil, field.info)
-      }
-
-      /* Create a new setter. Setters are never private or local. They are
-       * always accessors and deferred. */
-      def newSetter(field: Symbol): Symbol = {
-        //println("creating new setter for "+field+field.locationString+(field hasFlag MUTABLE))
-        val setterName = field.setterName
-        val newFlags   = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED
-        val setter     = mixinClass.newMethod(setterName, field.pos, newFlags)
-        // TODO preserve pre-erasure info?
-        setter setInfo MethodType(setter.newSyntheticValueParams(List(field.info)), UnitTpe)
-        if (field.needsExpandedSetterName)
-          setter.name = nme.expandedSetterName(setter.name, mixinClass)
-
-        setter
-      }
-
-      mixinClass.info // make sure info is up to date, so that implClass is set.
-      val impl = implClass(mixinClass) orElse abort("No impl class for " + mixinClass)
-
-      for (member <- impl.info.decls) {
-        if (!member.isMethod && !member.isModule && !member.isModuleVar) {
-          assert(member.isTerm && !member.isDeferred, member)
-          if (member.getterIn(impl).isPrivate) {
-            member.makeNotPrivate(mixinClass) // this will also make getter&setter not private
-          }
-          val getter = member.getterIn(mixinClass)
-          if (getter == NoSymbol) addMember(mixinClass, newGetter(member))
-          if (!member.tpe.isInstanceOf[ConstantType] && !member.isLazy) {
-            val setter = member.setterIn(mixinClass)
-            if (setter == NoSymbol) addMember(mixinClass, newSetter(member))
-          }
-        }
-      }
-      debuglog("new defs of " + mixinClass + " = " + mixinClass.info.decls)
-    }
-  }
+//  def addLateInterfaceMembers(mixinClass: Symbol) {
+//    if (treatedClassInfos(mixinClass) != mixinClass.info) {
+//      treatedClassInfos(mixinClass) = mixinClass.info
+//      assert(phase == currentRun.mixinPhase, phase)
+//
+//      /* Create a new getter. Getters are never private or local. They are
+//       *  always accessors and deferred. */
+//      def newGetter(field: Symbol): Symbol = {
+//        // println("creating new getter for "+ field +" : "+ field.info +" at "+ field.locationString+(field hasFlag MUTABLE))
+//        val newFlags = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED | ( if (field.isMutable) 0 else STABLE )
+//        // TODO preserve pre-erasure info?
+//        mixinClass.newMethod(field.getterName, field.pos, newFlags) setInfo MethodType(Nil, field.info)
+//      }
+//
+//      /* Create a new setter. Setters are never private or local. They are
+//       * always accessors and deferred. */
+//      def newSetter(field: Symbol): Symbol = {
+//        //println("creating new setter for "+field+field.locationString+(field hasFlag MUTABLE))
+//        val setterName = field.setterName
+//        val newFlags   = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED
+//        val setter     = mixinClass.newMethod(setterName, field.pos, newFlags)
+//        // TODO preserve pre-erasure info?
+//        setter setInfo MethodType(setter.newSyntheticValueParams(List(field.info)), UnitTpe)
+//        if (field.needsExpandedSetterName)
+//          setter.name = nme.expandedSetterName(setter.name, mixinClass)
+//
+//        setter
+//      }
+//
+//      mixinClass.info // make sure info is up to date, so that implClass is set.
+//      val impl = implClass(mixinClass) orElse abort("No impl class for " + mixinClass)
+//
+//      for (member <- impl.info.decls) {
+//        if (!member.isMethod && !member.isModule && !member.isModuleVar) {
+//          assert(member.isTerm && !member.isDeferred, member)
+//          if (member.getterIn(impl).isPrivate) {
+//            member.makeNotPrivate(mixinClass) // this will also make getter&setter not private
+//          }
+//          val getter = member.getterIn(mixinClass)
+//          if (getter == NoSymbol) addMember(mixinClass, newGetter(member))
+//          if (!member.tpe.isInstanceOf[ConstantType] && !member.isLazy) {
+//            val setter = member.setterIn(mixinClass)
+//            if (setter == NoSymbol) addMember(mixinClass, newSetter(member))
+//          }
+//        }
+//      }
+//      debuglog("new defs of " + mixinClass + " = " + mixinClass.info.decls)
+//    }
+//  }
 
   /** Add all members to be mixed in into a (non-trait-) class
    *  These are:
    *    for every mixin trait T that is not also inherited by the superclass:
-   *     add late interface members to T and then:
-   *      - if a member M of T is forwarded to the implementation class, add
-   *        a forwarder for M unless one exists already.
-   *        The alias of the forwarder is the static member it forwards to.
    *      - for every abstract accessor in T, add a field and an implementation for that accessor
    *      - for every super accessor in T, add an implementation of that accessor
    *      - for every module in T, add a module
    */
-  def addMixedinMembers(clazz: Symbol, unit: CompilationUnit) {
-    def cloneAndAddMixinMember(mixinClass: Symbol, mixinMember: Symbol): Symbol = (
-      cloneAndAddMember(mixinClass, mixinMember, clazz)
-           setPos clazz.pos
-        resetFlag DEFERRED | lateDEFERRED
-    )
-
-    /* Mix in members of implementation class mixinClass into class clazz */
-    def mixinImplClassMembers(mixinClass: Symbol, mixinInterface: Symbol) {
-      if (!mixinClass.isImplClass) devWarning ("Impl class flag is not set " +
-        ((mixinClass.debugLocationString, mixinInterface.debugLocationString)))
-
-      for (member <- mixinClass.info.decls ; if isForwarded(member)) {
-        val imember = member overriddenSymbol mixinInterface
-        imember overridingSymbol clazz match {
-          case NoSymbol =>
-            if (clazz.info.findMember(member.name, 0, lateDEFERRED, stableOnly = false).alternatives contains imember)
-              cloneAndAddMixinMember(mixinInterface, imember).asInstanceOf[TermSymbol] setAlias member
-          case _        =>
-        }
-      }
-    }
+  def implementTraitMembers(clazz: Symbol, unit: CompilationUnit) {
 
     /* Mix in members of trait mixinClass into class clazz. Also,
      * for each lazy field in mixinClass, add a link from its mixed in member to its
      * initializer method inside the implclass.
      */
-    def mixinTraitMembers(mixinClass: Symbol) {
-      // For all members of a trait's interface do:
-      for (mixinMember <- mixinClass.info.decls) {
-        if (isConcreteAccessor(mixinMember)) {
-          if (isOverriddenAccessor(mixinMember, clazz.info.baseClasses))
-            devWarning(s"Overridden concrete accessor: ${mixinMember.fullLocationString}")
-          else {
-            // mixin field accessors
-            val mixedInAccessor = cloneAndAddMixinMember(mixinClass, mixinMember)
-            if (mixinMember.isLazy) {
-              initializer(mixedInAccessor) = (
-                implClass(mixinClass).info.decl(mixinMember.name)
-                  orElse abort("Could not find initializer for " + mixinMember.name)
-              )
+    def subclassMember(traitClass: Symbol, traitMember: Symbol): Option[Symbol] =
+      if (isConcreteAccessor(traitMember)) {
+        if (isOverriddenAccessor(traitMember, clazz.info.baseClasses)) {
+          devWarning(s"Overridden concrete accessor: ${traitMember.fullLocationString}")
+          None
+        }
+        else {
+          // mixin field accessors
+          val mixedInAccessor = cloneBeforeErasure(traitClass, traitMember, clazz).setPos(clazz.pos).resetFlag(DEFERRED | lateDEFERRED)
+          if (traitMember.isLazy) {
+            initializer(mixedInAccessor) = (
+              implClass(traitClass).info.decl(traitMember.name)
+                orElse abort("Could not find initializer for " + traitMember.name)
+            )
+          }
+          if (!traitMember.isSetter)
+            traitMember.tpe match {
+              case MethodType(Nil, ConstantType(_)) =>
+                // mixinMember is a constant; only getter is needed
+                None
+              case MethodType(Nil, TypeRef(_, UnitClass, _)) =>
+                // mixinMember is a value of type unit. No field needed
+                None
+              case _ => // otherwise mixin a field as well
+                // enteringPhase: the private field is moved to the implementation class by erasure,
+                // so it can no longer be found in the mixinMember's owner (the trait)
+                val accessed = enteringPickler(traitMember.accessed)
+                // #3857, need to retain info before erasure when cloning (since cloning only
+                // carries over the current entry in the type history)
+                val sym = enteringErasure {
+                  // so we have a type history entry before erasure
+                  clazz.newValue(traitMember.localName, traitMember.pos).setInfo(traitMember.tpe.resultType)
+                }
+                sym updateInfo traitMember.tpe.resultType // info at current phase
+
+                val newFlags = (
+                    ( PrivateLocal )
+                  | ( traitMember getFlag MUTABLE | LAZY)
+                  | ( if (traitMember.hasStableFlag) 0 else MUTABLE )
+                )
+
+                Some(sym setFlag newFlags setAnnotations accessed.annotations)
             }
-            if (!mixinMember.isSetter)
-              mixinMember.tpe match {
-                case MethodType(Nil, ConstantType(_)) =>
-                  // mixinMember is a constant; only getter is needed
-                  ;
-                case MethodType(Nil, TypeRef(_, UnitClass, _)) =>
-                  // mixinMember is a value of type unit. No field needed
-                  ;
-                case _ => // otherwise mixin a field as well
-                  // enteringPhase: the private field is moved to the implementation class by erasure,
-                  // so it can no longer be found in the mixinMember's owner (the trait)
-                  val accessed = enteringPickler(mixinMember.accessed)
-                  // #3857, need to retain info before erasure when cloning (since cloning only
-                  // carries over the current entry in the type history)
-                  val sym = enteringErasure {
-                    // so we have a type history entry before erasure
-                    clazz.newValue(mixinMember.localName, mixinMember.pos).setInfo(mixinMember.tpe.resultType)
-                  }
-                  sym updateInfo mixinMember.tpe.resultType // info at current phase
-
-                  val newFlags = (
-                      ( PrivateLocal )
-                    | ( mixinMember getFlag MUTABLE | LAZY)
-                    | ( if (mixinMember.hasStableFlag) 0 else MUTABLE )
-                  )
-
-                  addMember(clazz, sym setFlag newFlags setAnnotations accessed.annotations)
-              }
-          }
         }
-        else if (mixinMember.isSuperAccessor) { // mixin super accessors
-          val superAccessor = addMember(clazz, mixinMember.cloneSymbol(clazz)) setPos clazz.pos
-          assert(superAccessor.alias != NoSymbol, superAccessor)
+      } else if (traitMember.isSuperAccessor) { // mixin super accessors
+        val superAccessor = traitMember.cloneSymbol(clazz) setPos clazz.pos
+        assert(superAccessor.alias != NoSymbol, superAccessor)
 
-          rebindSuper(clazz, mixinMember.alias, mixinClass) match {
-            case NoSymbol =>
-              reporter.error(clazz.pos, "Member %s of mixin %s is missing a concrete super implementation.".format(
-                mixinMember.alias, mixinClass))
-            case alias1 =>
-              superAccessor.asInstanceOf[TermSymbol] setAlias alias1
-          }
+        rebindSuper(clazz, traitMember.alias, traitClass) match {
+          case NoSymbol =>
+            reporter.error(clazz.pos, s"Member ${traitMember.alias} of mixin ${traitClass} is missing a concrete super implementation.")
+            None
+          case alias1 =>
+            superAccessor.asInstanceOf[TermSymbol] setAlias alias1
+            Some(superAccessor)
         }
-        else if (mixinMember.isMethod && mixinMember.isModule && mixinMember.hasNoFlags(LIFTED | BRIDGE)) {
-          // mixin objects: todo what happens with abstract objects?
-          addMember(clazz, mixinMember.cloneSymbol(clazz, mixinMember.flags & ~(DEFERRED | lateDEFERRED)) setPos clazz.pos)
-        }
+      } else if (traitMember.isMethod && traitMember.isModule && traitMember.hasNoFlags(LIFTED | BRIDGE)) {
+        // mixin objects: todo what happens with abstract objects?
+        Some(traitMember.cloneSymbol(clazz, traitMember.flags & ~(DEFERRED | lateDEFERRED)) setPos clazz.pos)
       }
-    }
+
 
     if (clazz.isJavaDefined || treatedClassInfos(clazz) == clazz.info)
       return
@@ -365,14 +338,18 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
     assert(!clazz.isTrait && clazz.info.parents.nonEmpty, clazz)
 
     // first complete the superclass with mixed in members
-    addMixedinMembers(clazz.superClass, unit)
+    implementTraitMembers(clazz.superClass, unit)
 
     for (mc <- clazz.mixinClasses ; if mc hasFlag lateINTERFACE) {
       // @SEAN: adding trait tracking so we don't have to recompile transitive closures
       unit.depends += mc
-      addLateInterfaceMembers(mc)
-      mixinTraitMembers(mc)
-      mixinImplClassMembers(implClass(mc), mc)
+//      addLateInterfaceMembers(mc)
+
+      // For all members of a trait's interface do:
+      for (mixinMember <- mc.info.decls)
+        subclassMember(mc, mixinMember) foreach (addMember(clazz, _))
+
+//      mixinImplClassMembers(implClass(mc), mc)
     }
   }
 
@@ -510,65 +487,23 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
     }
 
 
+  //  TODO in namers: if(sym.owner.isTrait && sym.isSetter && !sym.isDeferred) sym.addAnnotation(TraitSetterAnnotationClass)
+
     /** The first transform; called in a pre-order traversal at phase mixin
-     *  (that is, every node is processed before its children).
-     *  What transform does:
-     *   - For every non-trait class, add all mixed in members to the class info.
-     *   - For every trait, add all late interface members to the class info
-     *   - For every static implementation method:
-     *       - remove override flag
-     *       - create a new method definition that also has a `self` parameter
-     *         (which comes first) Iuli: this position is assumed by tail call elimination
-     *         on a different receiver. Storing a new 'this' assumes it is located at
-     *         index 0 in the local variable table. See 'STORE_THIS' and GenASM.
-     *   - Map implementation class types in type-apply's to their interfaces
-     *   - Remove all fields in implementation classes
-     */
+      * (that is, every node is processed before its children).
+      *
+      * For every non-trait class, add all mixed in members to the class info.
+      */
     private def preTransform(tree: Tree): Tree = {
       val sym = tree.symbol
       tree match {
-        case Template(parents, self, body) =>
+        case Template(parents, self, body) if !(currentOwner.isTrait || isPrimitiveValueClass(currentOwner)) =>
           localTyper = erasure.newTyper(rootContext.make(tree, currentOwner))
           exitingMixin(currentOwner.owner.info)//todo: needed?
 
-          if (!currentOwner.isTrait && !isPrimitiveValueClass(currentOwner))
-            addMixedinMembers(currentOwner, unit)
-          else if (currentOwner hasFlag lateINTERFACE)
-            addLateInterfaceMembers(currentOwner)
+          implementTraitMembers(currentOwner, unit)
 
           tree
-        case DefDef(_, _, _, vparams :: Nil, _, _) =>
-          if (currentOwner.isImplClass) {
-            if (isImplementedStatically(sym)) {
-              sym setFlag notOVERRIDE
-              self = sym.newValueParameter(nme.SELF, sym.pos) setInfo toInterface(currentOwner.typeOfThis)
-              val selfdef = ValDef(self) setType NoType
-              copyDefDef(tree)(vparamss = List(selfdef :: vparams))
-            }
-            else EmptyTree
-          }
-          else {
-            if (currentOwner.isTrait && sym.isSetter && !enteringPickler(sym.isDeferred)) {
-              sym.addAnnotation(TraitSetterAnnotationClass)
-            }
-            tree
-          }
-        // !!! What is this doing, and why is it only looking for exactly
-        // one type parameter? It would seem to be
-        //   "Map implementation class types in type-apply's to their interfaces"
-        // from the comment on preTransform, but is there some way we should know
-        // that impl class types in type applies can only appear in single
-        // type parameter type constructors?
-        case Apply(tapp @ TypeApply(fn, List(arg)), List()) =>
-          if (arg.tpe.typeSymbol.isImplClass) {
-            val ifacetpe = toInterface(arg.tpe)
-            arg setType ifacetpe
-            tapp setType MethodType(Nil, ifacetpe)
-            tree setType ifacetpe
-          }
-          tree
-        case ValDef(_, _, _, _) if currentOwner.isImplClass =>
-          EmptyTree
         case _ =>
           tree
       }

@@ -934,6 +934,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
        (owner.isTrait || owner.isImplClass) && (
             hasAllFlags(LIFTED | MODULE | METHOD)
          || isConstructor
+          // (not-private || lifted) && !accessor && !superAccessor && !module
          || hasFlag(notPRIVATE | LIFTED) && !hasFlag(ACCESSOR | SUPERACCESSOR | MODULE)
        )
     )
