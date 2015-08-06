@@ -263,13 +263,13 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
    *      - for every super accessor in T, add an implementation of that accessor
    *      - for every module in T, add a module
    */
-  def implementTraitMembers(clazz: Symbol, unit: CompilationUnit) {
+  def implementTraitMembers(clazz: Symbol, unit: CompilationUnit) = {
 
     /* Mix in members of trait mixinClass into class clazz. Also,
      * for each lazy field in mixinClass, add a link from its mixed in member to its
      * initializer method inside the implclass.
      */
-    def subclassMember(traitClass: Symbol, traitMember: Symbol): Option[Symbol] =
+    def implementedMembers(traitClass: Symbol, traitMember: Symbol): List[Symbol] =
       if (isConcreteAccessor(traitMember)) {
         if (isOverriddenAccessor(traitMember, clazz.info.baseClasses)) {
           devWarning(s"Overridden concrete accessor: ${traitMember.fullLocationString}")
@@ -284,18 +284,11 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
                 orElse abort("Could not find initializer for " + traitMember.name)
             )
           }
-          if (!traitMember.isSetter)
+          val field = if (!traitMember.isSetter)
             traitMember.tpe match {
-              case MethodType(Nil, ConstantType(_)) =>
-                // mixinMember is a constant; only getter is needed
-                None
-              case MethodType(Nil, TypeRef(_, UnitClass, _)) =>
-                // mixinMember is a value of type unit. No field needed
-                None
-              case _ => // otherwise mixin a field as well
-                // enteringPhase: the private field is moved to the implementation class by erasure,
-                // so it can no longer be found in the mixinMember's owner (the trait)
-                val accessed = enteringPickler(traitMember.accessed)
+              // No field needed for constant or unit-valued field
+              case MethodType(Nil, ConstantType(_) | TypeRef(_, UnitClass, _)) =>  Nil
+              case _ => // otherwise mixin a field based on the
                 // #3857, need to retain info before erasure when cloning (since cloning only
                 // carries over the current entry in the type history)
                 val sym = enteringErasure {
@@ -310,8 +303,9 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
                   | ( if (traitMember.hasStableFlag) 0 else MUTABLE )
                 )
 
-                Some(sym setFlag newFlags setAnnotations accessed.annotations)
+                List(sym setFlag newFlags setAnnotations traitMember.annotations)
             }
+          List(mixedInAccessor, field)
         }
       } else if (traitMember.isSuperAccessor) { // mixin super accessors
         val superAccessor = traitMember.cloneSymbol(clazz) setPos clazz.pos
@@ -347,7 +341,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
 
       // For all members of a trait's interface do:
       for (mixinMember <- mc.info.decls)
-        subclassMember(mc, mixinMember) foreach (addMember(clazz, _))
+        implementedMembers(mc, mixinMember) foreach (addMember(clazz, _))
 
 //      mixinImplClassMembers(implClass(mc), mc)
     }
@@ -1245,7 +1239,8 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
     }
 
     /** The main transform method.
-     *  This performs pre-order traversal preTransform at mixin phase;
+     *  This performs pre-order travers
+     *  al preTransform at mixin phase;
      *  when coming back, it performs a postTransform at phase after.
      */
     override def transform(tree: Tree): Tree = {

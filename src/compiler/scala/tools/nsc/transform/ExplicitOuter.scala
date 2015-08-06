@@ -122,42 +122,32 @@ abstract class ExplicitOuter extends InfoTransform
     clazz.fullName == mixin.fullName
   }
 
-  /** <p>
-   *    The type transformation method:
-   *  </p>
-   *  <ol>
-   *    <li>
-   *      Add an outer parameter to the formal parameters of a constructor
-   *      in an inner non-trait class;
-   *    </li>
-   *    <li>
-   *      Add a protected $outer field to an inner class which is
-   *      not a trait.
-   *    </li>
-   *    <li>
-   *      <p>
-   *        Add an outer accessor $outer$$C to every inner class
-   *        with fully qualified name C that is not an interface.
-   *        The outer accessor is abstract for traits, concrete for other
-   *        classes.
-   *      </p>
-   *      <p>
-   *        3a. Also add overriding accessor defs to every class that inherits
-   *        mixin classes with outer accessor defs (unless the superclass
-   *        already inherits the same mixin).
-   *      </p>
-   *    </li>
-   *    <li>
-   *      Make all super accessors and modules in traits non-private, mangling
-   *      their names.
-   *    </li>
-   *    <li>
-   *      Remove protected flag from all members of traits.
-   *    </li>
-   *  </ol>
-   *  Note: this transformInfo need not be reflected as the JVM reflection already
-   *  elides outer pointers.
-   */
+  /** The type transformation method:
+    *
+    *   1. Add an outer parameter to the formal parameters of a constructor
+    *      in a non-trait inner class;
+    *   2. Add a protected $outer field to a non-trait inner class.
+    *   3. Add an outer accessor $outer$$C to every inner class
+    *      with fully qualified name C that is not an interface.
+    *      The outer accessor is abstract for traits, concrete for other
+    *      classes.
+    *   4. Also add overriding accessor defs to every class that inherits
+    *      mixin classes with outer accessor defs (unless the superclass
+    *      already inherits the same mixin).
+    *   5. Make all super accessors and modules in traits non-private,
+    *      mangling their names.
+    *   6. Remove protected flag from all members of traits.
+    *   7. Local fields of traits need to be unconditionally unprivatized. See SI-2946.
+    *      Strictly speaking only necessary when the field is referenced
+    *      by an inner class, as that class will be lifted out of the
+    *      access boundary of the private[this] member. To enable separate compilation,
+    *      we must always transform, since other compilation runs have no way of knowing
+    *      whether the field was accessed (and thus its name was mangled by
+    *      makeNotPrivate to emulate privacy for public members) or not.
+    *
+    * Note: this transformInfo need not be reflected as the JVM reflection already
+    * elides outer pointers.
+    */
   def transformInfo(sym: Symbol, tp: Type): Type = tp match {
     case MethodType(params, restpe1) =>
       val restpe = transformInfo(sym, restpe1)
@@ -172,6 +162,7 @@ abstract class ExplicitOuter extends InfoTransform
       } else if (restpe ne restpe1)
         MethodType(params, restpe)
       else tp
+
     case ClassInfoType(parents, decls, clazz) =>
       var decls1 = decls
       if (isInner(clazz) && !clazz.isInterface) {
@@ -195,19 +186,16 @@ abstract class ExplicitOuter extends InfoTransform
           }
         }
       }
-      if (decls1 eq decls) tp else ClassInfoType(parents, decls1, clazz)
+      if (decls1 eq decls) tp
+      else ClassInfoType(parents, decls1, clazz)
+
     case PolyType(tparams, restp) =>
       val restp1 = transformInfo(sym, restp)
       if (restp eq restp1) tp else PolyType(tparams, restp1)
 
     case _ =>
-      // Local fields of traits need to be unconditionally unprivatized.
-      // Reason: Those fields might need to be unprivatized if referenced by an inner class.
-      // On the other hand, mixing in the trait into a separately compiled
-      // class needs to have a common naming scheme, independently of whether
-      // the field was accessed from an inner class or not. See #2946
       if (sym.owner.isTrait && sym.isLocalToThis &&
-              (sym.getterIn(sym.owner.toInterface) == NoSymbol))
+              (sym.getterIn(sym.owner.toInterface) == NoSymbol)) // 7
         sym.makeNotPrivate(sym.owner)
       tp
   }
