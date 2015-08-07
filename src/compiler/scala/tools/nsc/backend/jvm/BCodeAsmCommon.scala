@@ -262,7 +262,7 @@ final class BCodeAsmCommon[G <: Global](val global: G) {
       if (classSym.isPublic)                                     ACC_PUBLIC    else 0,
       if (classSym.isFinal)                                      ACC_FINAL     else 0,
       // see the link above. javac does the same: ACC_SUPER for all classes, but not interfaces.
-      if (classSym.isInterface && !classSym.isTrait)                                  ACC_INTERFACE else ACC_SUPER,
+      if (classSym.isInterface)                                  ACC_INTERFACE else ACC_SUPER,
       // for Java enums, we cannot trust `hasAbstractFlag` (see comment in enumFlags)
       if (!classSym.hasJavaEnumFlag && classSym.hasAbstractFlag) ACC_ABSTRACT  else 0,
       if (classSym.isArtifact)                                   ACC_SYNTHETIC else 0,
