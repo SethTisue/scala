@@ -372,8 +372,22 @@ abstract class Erasure extends InfoTransform with scala.reflect.internal.transfo
    *   - For Array[T].<init>    : {scala#Int)Array[T]
    *   - For a type parameter   : A type bounds type consisting of the erasures of its bounds.
    */
-//  override def transformInfo(sym: Symbol, tp: Type): Type =
-//    transformMixinInfo(super.transformInfo(sym, tp))
+  override def transformInfo(sym: Symbol, tp: Type): Type =
+    transformMixinInfo(super.transformInfo(sym, tp))
+
+  def transformMixinInfo(tp: Type): Type = tp match {
+    case ClassInfoType(parents, decls, clazz) if clazz.isPackageClass || !clazz.isJavaDefined =>
+      val parents1 = parents match {
+        case Nil      => Nil
+        case hd :: tl =>
+          assert(!hd.typeSymbol.isTrait, clazz)
+          if (clazz.isTrait) ObjectTpe :: tl
+          else parents
+      }
+      ClassInfoType(parents1, decls, clazz)
+    case _ =>
+      tp
+  }
 
   val deconstMap = new TypeMap {
     // For some reason classOf[Foo] creates ConstantType(Constant(tpe)) with an actual Type for tpe,
