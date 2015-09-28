@@ -8,10 +8,6 @@
 #   20120312
 #
 
-# need to make sure we aren't inheriting debug mode from a parent shell script
-# otherwise stdout will have extra junk in it
-set +x
-
 [[ $# -eq 0 ]] || cd "$1"
 
 lastcommitdate=$(git log --format="%ci" HEAD | head -n 1 | cut -d ' ' -f 1)
