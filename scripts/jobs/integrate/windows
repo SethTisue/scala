@@ -8,6 +8,7 @@ export ANT_OPTS="-Dfile.encoding=UTF-8 -server -XX:+AggressiveOpts -XX:+UseParNe
   -Dstarr.version=2.11.7 \
   -Dscalac.args.optimise=-optimise \
   -Dlocker.skip=1 \
-  test.suite.init
+  test.suite.init \
+  pack.partest-extras
 
 test/partest --debug test/files/run/t7634.scala
