@@ -11,7 +11,7 @@ export ANT_OPTS="-Dfile.encoding=UTF-8 -server -XX:+AggressiveOpts -XX:+UseParNe
   test.suite.init \
   pack.partest-extras
 
-unset -e
+set +e
 
 test/partest test/files/run/t7634.scala || echo oops
 
