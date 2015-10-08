@@ -24,15 +24,8 @@ findScalaHome () {
   ( ( cd -P "$(dirname "$source")/.." > /dev/null ) && pwd )
 }
 
-# Use tput to detect color-capable terminal.
-term_colors=$(tput colors 2>/dev/null)
-if [[ $? == 0 ]] && [[ $term_colors -gt 2 ]]; then
-  git_diff_options="--color=always --word-diff"
-  color_opts="-Dpartest.colors=$term_colors"
-else
-  unset color_opts
-  git_diff_options="--nocolor"
-fi
+unset color_opts
+git_diff_options="--nocolor"
 
 cygwin=false;
 darwin=false;
