@@ -8,15 +8,4 @@ export ANT_OPTS="-Dfile.encoding=UTF-8 -server -XX:+AggressiveOpts -XX:+UseParNe
   -Dstarr.version=2.11.7 \
   -Dscalac.args.optimise=-optimise \
   -Dlocker.skip=1 \
-  test.suite.init \
-  pack.partest-extras
-
-set +e
-
-test/partest test/files/run/t7634.scala || echo oops
-
-echo run log:
-
-cat test/files/run/t7634-run.log
-
-echo done
+  test
