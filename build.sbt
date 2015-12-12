@@ -98,7 +98,18 @@ lazy val publishSettings : Seq[Setting[_]] = Seq(
       (f, to)
     }
     IO.copy(mappings)
-  }
+  },
+  publishTo := Some(
+    if (version.value.trim.endsWith("SNAPSHOT"))
+      Resolver.sonatypeRepo("snapshots")
+    else
+      Opts.resolver.sonatypeStaging
+  ),
+  credentials ++= {
+    val file = Path.userHome / ".ivy2" / ".credentials"
+    if (file.exists) List(file) else Nil
+  },
+  publishMavenStyle    := true
 )
 
 lazy val commonSettings = clearSourceAndResourceDirectories ++ versionPropertiesSettings ++ publishSettings ++ Seq[Setting[_]](
