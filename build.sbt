@@ -99,15 +99,18 @@ lazy val publishSettings : Seq[Setting[_]] = Seq(
     }
     IO.copy(mappings)
   },
+/*
   publishTo := Some(
     if (version.value.trim.endsWith("SNAPSHOT"))
       Resolver.sonatypeRepo("snapshots")
     else
       Opts.resolver.sonatypeStaging
   ),
+ */
+  publishTo := Some(Resolver.file("file", new File("./foobar"))),
   credentials ++= {
     val file = Path.userHome / ".ivy2" / ".credentials"
-    if (file.exists) List(file) else Nil
+    if (file.exists) List(Credentials(file)) else Nil
   },
   publishMavenStyle    := true
 )
