@@ -555,7 +555,9 @@ trait TraversableLike[+A, +Repr] extends Any
    *  @return   an iterator over all the tails of this $coll
    *  @example  `List(1,2,3).tails = Iterator(List(1,2,3), List(2,3), List(3), Nil)`
    */
-  def tails: Iterator[Repr] = iterateUntilEmpty(_.tail)
+  def tails: Iterator[Repr] =
+    (Iterator.iterate(thisCollection)(_.tail).takeWhile (x => !x.isEmpty) ++ Iterator(newBuilder.result))
+      .map(_.asInstanceOf[Repr])
 
   /** Iterates over the inits of this $coll. The first value will be this
    *  $coll and the final one will be an empty $coll, with the intervening
