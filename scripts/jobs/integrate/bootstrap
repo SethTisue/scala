@@ -193,17 +193,6 @@ docTask() {
   fi
 }
 
-buildXML() {
-  if [ "$XML_BUILT" != "yes" ] && [ "$forceRebuild" != "yes" ] && ( sbtResolve "org.scala-lang.modules"  "scala-xml" $XML_VER )
-  then echo "Found scala-xml $XML_VER; not building."
-  else
-    update scala scala-xml "$XML_REF" && gfxd
-    doc="$(docTask $XML_BUILT)"
-    sbtBuild 'set version := "'$XML_VER'-DOC"' $clean "$doc" 'set version := "'$XML_VER'"' test "${buildTasks[@]}"
-    XML_BUILT="yes" # ensure the module is built and published when buildXML is invoked for the second time, see comment above
-  fi
-}
-
 buildPartest() {
   if [ "$PARTEST_BUILT" != "yes" ] && [ "$forceRebuild" != "yes" ] && ( sbtResolve "org.scala-lang.modules"  "scala-partest" $PARTEST_VER )
   then echo "Found scala-partest $PARTEST_VER; not building."
@@ -231,7 +220,6 @@ buildScalaCheck(){
 buildModules() {
   publishTasks=('set credentials += Credentials(Path.userHome / ".credentials-private-repo")' "set every publishTo := Some(\"publish-repo\" at \"$integrationRepoUrl\")")
   buildTasks=($publishPrivateTask)
-  buildXML
   # buildScalaCheck
   buildPartest
 }
@@ -239,7 +227,6 @@ buildModules() {
 buildPublishedModules() {
   publishTasks=('set credentials += Credentials(Path.userHome / ".credentials-sonatype")' "set pgpPassphrase := Some(Array.empty)")
   buildTasks=($publishSonatypeTaskModules)
-  buildXML
   buildPartest
 }
 
