@@ -19,7 +19,7 @@ buildInfoKeys := Seq[BuildInfoKey](buildClasspath)
 
 buildInfoPackage := "scalabuild"
 
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.15")
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.18")
 
 libraryDependencies ++= Seq(
   "org.eclipse.jgit" % "org.eclipse.jgit" % "4.6.0.201612231935-r",
@@ -31,3 +31,5 @@ concurrentRestrictions in Global := Seq(
 )
 
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.0.0")
+
+addSbtPlugin("com.lightbend" % "sbt-whitesource" % "0.1.14")

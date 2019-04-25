@@ -336,7 +336,8 @@ val disablePublishing = Seq[Setting[_]](
   publishArtifact := false,
   // The above is enough for Maven repos but it doesn't prevent publishing of ivy.xml files
   publish := {},
-  publishLocal := {}
+  publishLocal := {},
+  whitesourceIgnore := true
 )
 
 lazy val setJarLocation: Setting[_] =
