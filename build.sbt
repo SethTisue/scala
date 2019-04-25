@@ -53,6 +53,7 @@ val scalacheckDep     = "org.scalacheck"         % "scalacheck_2.12" % "1.13.4" 
 val jolDep            = "org.openjdk.jol"        % "jol-core"        % "0.5"
 val asmDep            = "org.scala-lang.modules" % "scala-asm"       % versionProps("scala-asm.version")
 val jlineDep          = "jline"                  % "jline"           % versionProps("jline.version")
+val jansiDep          = "org.fusesource.jansi"   % "jansi"           % "1.12"
 val antDep            = "org.apache.ant"         % "ant"             % "1.9.4"
 
 val partestDependencies =  Seq(
@@ -463,7 +464,7 @@ lazy val compiler = configureAsSubproject(project)
     description := "Scala Compiler",
     libraryDependencies ++= Seq(antDep, asmDep),
     // These are only needed for the POM:
-    libraryDependencies ++= Seq(scalaXmlDep, jlineDep % "optional"),
+    libraryDependencies ++= Seq(scalaXmlDep, jlineDep % "optional", jansiDep % "optional"),
     buildCharacterPropertiesFile := (resourceManaged in Compile).value / "scala-buildcharacter.properties",
     resourceGenerators in Compile += generateBuildCharacterPropertiesFile.map(file => Seq(file)).taskValue,
     // this a way to make sure that classes from interactive and scaladoc projects
