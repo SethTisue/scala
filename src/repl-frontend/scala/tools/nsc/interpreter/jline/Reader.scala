@@ -36,6 +36,13 @@ class Reader private (config: ShellConfig, reader: LineReader, val accumulator: 
   }
   def redrawLine(): Unit = ???
   def reset(): Unit = accumulator.reset()
+
+  override def withSecondaryPrompt[T](prompt: String)(body: => T): T = {
+    val oldPrompt = reader.getVariable(LineReader.SECONDARY_PROMPT_PATTERN)
+    reader.setVariable(LineReader.SECONDARY_PROMPT_PATTERN, prompt)
+    try body
+    finally reader.setVariable(LineReader.SECONDARY_PROMPT_PATTERN, oldPrompt)
+  }
 }
 
 object Reader {
