@@ -26,7 +26,6 @@ import org.jline.reader.LineReader.Option
 class Reader private (config: ShellConfig, reader: LineReader, val accumulator: Accumulator, val completion: shell.Completion) extends shell.InteractiveReader {
   val history: shell.History = new HistoryAdaptor(reader.getHistory)
   def interactive: Boolean = true
-  protected def readOneKey(prompt: String): Int = ???
   protected def readOneLine(prompt: String): String = {
     try {
       reader.readLine(prompt)
