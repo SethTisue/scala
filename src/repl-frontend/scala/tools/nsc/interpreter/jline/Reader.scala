@@ -36,6 +36,14 @@ class Reader private (config: ShellConfig, reader: LineReader, val accumulator: 
   def redrawLine(): Unit = ???
   def reset(): Unit = accumulator.reset()
 
+  override def setStatus(s: String): Unit = {
+    import org.jline.utils.{ AttributedStringBuilder, Status }
+    val status = Status.getStatus(reader.getTerminal)
+    val attributedString = new AttributedStringBuilder().append(s).toAttributedString
+    import scala.jdk.CollectionConverters._
+    status.update(List(attributedString).asJava)
+  }
+
   override def withSecondaryPrompt[T](prompt: String)(body: => T): T = {
     val oldPrompt = reader.getVariable(LineReader.SECONDARY_PROMPT_PATTERN)
     reader.setVariable(LineReader.SECONDARY_PROMPT_PATTERN, prompt)

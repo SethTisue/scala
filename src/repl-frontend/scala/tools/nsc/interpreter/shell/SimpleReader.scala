@@ -20,6 +20,7 @@ class SimpleReader(in: BufferedReader, out: JPrintWriter, val completion: Comple
   val accumulator = new Accumulator
 
   override def reset() = accumulator.reset()
+  def setStatus(s: String) = ()
   def redrawLine() = ()
 
   // InteractiveReader internals

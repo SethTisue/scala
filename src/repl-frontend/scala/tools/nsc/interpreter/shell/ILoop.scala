@@ -531,7 +531,7 @@ class ILoop(config: ShellConfig, inOverride: BufferedReader = null,
   def lineCommand(what: String): Result = editCommand(what, None)
 
   def completion(accumulator: Accumulator = new Accumulator) = {
-    val rc = new ReplCompletion(intp, accumulator)
+    val rc = new ReplCompletion(intp, () => in, accumulator)
     MultiCompletion(shellCompletion, rc)
   }
   val shellCompletion = new Completion {

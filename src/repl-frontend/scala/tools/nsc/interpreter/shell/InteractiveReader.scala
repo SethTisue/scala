@@ -22,6 +22,7 @@ trait InteractiveReader {
 
   def reset(): Unit
   def history: History
+  def setStatus(s: String): Unit
   def completion: Completion
   def redrawLine(): Unit
   def withSecondaryPrompt[T](prompt: String)(body: => T): T = body

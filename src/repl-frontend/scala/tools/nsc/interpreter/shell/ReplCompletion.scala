@@ -18,7 +18,7 @@ import scala.tools.nsc.interpreter.Naming
 
 /** Completion for the REPL.
  */
-class ReplCompletion(intp: Repl, val accumulator: Accumulator = new Accumulator) extends Completion {
+class ReplCompletion(intp: Repl, reader: () => InteractiveReader, val accumulator: Accumulator = new Accumulator) extends Completion {
   import ReplCompletion._
 
   def complete(buffer: String, cursor: Int): CompletionResult = {
@@ -66,7 +66,14 @@ class ReplCompletion(intp: Repl, val accumulator: Accumulator = new Accumulator)
             case slashPrint() if cursor == buf.length => CompletionResult(cursor, "" :: Naming.unmangle(result.print) :: Nil)
             case slashPrintRaw() if cursor == buf.length => CompletionResult(cursor, "" :: result.print :: Nil)
             case slashTypeAt(start, end) if cursor == buf.length => CompletionResult(cursor, "" :: result.typeAt(start.toInt, end.toInt) :: Nil)
-            case _ => val (c, r) = result.candidates(tabCount); CompletionResult(c, r)
+            case _ =>
+              result.candidates(tabCount) match {
+                case (_, "" :: defStrings) if defStrings.nonEmpty =>
+                  reader().setStatus(defStrings.head)
+                  NoCompletions
+                case (c, r) =>
+                  CompletionResult(c, r)
+              }
           }
         } finally result.cleanup()
       }
