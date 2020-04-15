@@ -12,7 +12,8 @@
 
 // Copyright 2005-2017 LAMP/EPFL and Lightbend, Inc.
 
-package scala.tools.nsc.interpreter.shell
+package scala.tools.nsc.interpreter
+package shell
 
 import java.io.{BufferedReader, PrintWriter}
 import java.nio.file.Files
@@ -219,12 +220,13 @@ class ILoop(config: ShellConfig, inOverride: BufferedReader = null,
 
   // complete filename
   val fileCompletion: Completion = new Completion {
-    def reset(): Unit = ()
     val emptyWord    = """(\s+)$""".r.unanchored
     val directorily  = """(\S*/)$""".r.unanchored
     val trailingWord = """(\S+)$""".r.unanchored
     def listed(i: Int, dir: Option[Path]) =
-      dir.filter(_.isDirectory).map(d => CompletionResult(i, d.toDirectory.list.map(_.name).toList)).getOrElse(NoCompletions)
+      dir.filter(_.isDirectory)
+        .map(d => CompletionResult(i, d.toDirectory.list.map(x => CompletionCandidate(x.name)).toList))
+        .getOrElse(NoCompletions)
     def listedIn(dir: Directory, name: String) = dir.list.filter(_.name.startsWith(name)).map(_.name).toList
     def complete(buffer: String, cursor: Int): CompletionResult =
       buffer.substring(0, cursor) match {
@@ -237,21 +239,21 @@ class ILoop(config: ShellConfig, inOverride: BufferedReader = null,
             else if (f.isDirectory) (cursor - s.length, List(s"${f.toAbsolute.path}/"))
             else if (f.parent.exists) (cursor - f.name.length, listedIn(f.parent.toDirectory, f.name))
             else (-1, Nil)
-          if (maybes.isEmpty) NoCompletions else CompletionResult(i, maybes)
+          if (maybes.isEmpty) NoCompletions else CompletionResult(i, maybes.map(CompletionCandidate(_)))
         case _                   => NoCompletions
       }
   }
 
   // complete settings name
   val settingsCompletion: Completion = new Completion {
-    def reset(): Unit = ()
     val trailingWord = """(\S+)$""".r.unanchored
     def complete(buffer: String, cursor: Int): CompletionResult = {
       buffer.substring(0, cursor) match {
         case trailingWord(s) =>
           val maybes = intp.visibleSettings.filter(_.name.startsWith(s)).map(_.name)
                                .filterNot(cond(_) { case "-"|"-X"|"-Y" => true }).sorted
-          if (maybes.isEmpty) NoCompletions else CompletionResult(cursor - s.length, maybes)
+          if (maybes.isEmpty) NoCompletions
+          else CompletionResult(cursor - s.length, maybes.map(CompletionCandidate(_)))
         case _ => NoCompletions
       }
     }
@@ -539,7 +541,6 @@ class ILoop(config: ShellConfig, inOverride: BufferedReader = null,
     MultiCompletion(shellCompletion, rc)
   }
   val shellCompletion = new Completion {
-    override def reset() = ()
     override def complete(buffer: String, cursor: Int) =
       if (buffer.startsWith(":")) colonCompletion(buffer, cursor).complete(buffer, cursor)
       else NoCompletions
@@ -878,7 +879,6 @@ class ILoop(config: ShellConfig, inOverride: BufferedReader = null,
           echo("You typed two blank lines.  Starting a new command.")
           None
         case Incomplete =>
-          in.completion.reset()
           in.readLine(paste.ContinuePrompt) match {
             case null =>
               // partial input with no input forthcoming,
@@ -890,9 +890,6 @@ class ILoop(config: ShellConfig, inOverride: BufferedReader = null,
           }
       }
     }
-
-    // signal completion that non-completion input has been received
-    in.completion.reset()
 
     start match {
       case "" | lineComment() => None // empty or line comment, do nothing
