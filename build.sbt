@@ -1534,3 +1534,5 @@ whitesourceIgnoredScopes         := Vector("test", "scala-tool")
   scala.build.TravisOutput.installIfOnTravis()
   Nil
 }
+
+ThisBuild / version := "2.13.2"
