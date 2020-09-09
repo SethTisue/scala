@@ -113,13 +113,15 @@ function generateRepositoriesConfig(){
     # See http://www.scala-sbt.org/0.13/docs/Proxy-Repositories.html
     sbtRepositoryConfig="$scriptsDir/repositories-scala-release"
     jcenterCacheUrl=${jcenterCacheUrl-"https://scala-ci.typesafe.com/artifactory/jcenter/"}
+    mavenCentralCacheUrl=${mavenCentralCacheUrl-"https://scala-ci.typesafe.com/artifactory/maven-central/"}
     cat > "$sbtRepositoryConfig" << EOF
 [repositories]
   script-repo: $1
   jcenter-cache: $jcenterCacheUrl
+  maven-central-cache: $mavenCentralCacheUrl
   typesafe-ivy-releases: https://dl.bintray.com/typesafe/ivy-releases/, [organisation]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
   sbt-plugin-releases: https://dl.bintray.com/sbt/sbt-plugin-releases/, [organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
-  maven-central: https://repo1.maven.org/maven2
+  maven-central
   local
 EOF
 }
