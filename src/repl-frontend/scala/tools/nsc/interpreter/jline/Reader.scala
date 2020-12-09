@@ -85,11 +85,12 @@ object Reader {
     locally {
       import LineReader._, Option._
       builder
-        .option(AUTO_GROUP, false)
+        .option(AUTO_GROUP, true)
         .option(LIST_PACKED, true)  // TODO
         .option(INSERT_TAB, true)   // At the beginning of the line, insert tab instead of completing
         .variable(HISTORY_FILE, config.historyFile) // Save history to file
         .variable(SECONDARY_PROMPT_PATTERN, config.encolor(config.continueText)) // Continue prompt
+        .variable(OTHERS_GROUP_NAME, " ")
         .variable(WORDCHARS, LineReaderImpl.DEFAULT_WORDCHARS.filterNot("*?.[]~=/&;!#%^(){}<>".toSet))
         .option(Option.DISABLE_EVENT_EXPANSION, true) // Otherwise `scala> println(raw"\n".toList)` gives `List(n)` !!
     }
@@ -232,7 +233,10 @@ class Completion(delegate: shell.Completion) extends shell.Completion with Compl
         case CompletionCandidate.Nilary => "()"
         case _ => "("
       })
-      val group = null        // results may be grouped
+      val group =             // resulted may be grouped
+        if (cc.isDeprecated) "deprecated"
+        else if (cc.isUniversal) "universal"
+        else null
       val descr =             // displayed alongside
         if (cc.isDeprecated) "deprecated"
         else if (cc.isUniversal) "universal"
