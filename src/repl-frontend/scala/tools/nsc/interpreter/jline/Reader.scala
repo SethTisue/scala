@@ -86,6 +86,7 @@ object Reader {
       import LineReader._, Option._
       builder
         .option(AUTO_GROUP, true)
+        .option(GROUP_PERSIST, true)
         .option(LIST_PACKED, true)  // TODO
         .option(INSERT_TAB, true)   // At the beginning of the line, insert tab instead of completing
         .variable(HISTORY_FILE, config.historyFile) // Save history to file
