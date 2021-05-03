@@ -117,6 +117,8 @@ trait Future[+T] extends Awaitable[T] {
    */
   def onComplete[U](f: Try[T] => U)(implicit executor: ExecutionContext): Unit
 
+  /* Stack trace support */
+  var stack: List[StackTraceElement] = Nil
 
   /* Miscellaneous */
 
@@ -498,7 +500,7 @@ trait Future[+T] extends Awaitable[T] {
     transform {
       result =>
         try pf.applyOrElse[Try[T], Any](result, Future.id[Try[T]])
-        catch { case t if NonFatal(t) => executor.reportFailure(t) }
+        catch { case t if NonFatal(t) => executor.reportFailure(rewriteStackTrace(t, this)) }
         // TODO: use `finally`?
         result
     }
@@ -668,8 +670,14 @@ object Future {
   *  @param executor  the execution context on which the future is run
   *  @return          the `Future` holding the result of the computation
   */
-  final def apply[T](body: => T)(implicit executor: ExecutionContext): Future[T] =
-    unit.map(_ => body)
+  final def apply[T](body: => T)(implicit executor: ExecutionContext): Future[T] = {
+    val result = unit.map(_ => body)
+    val element = (new Throwable).getStackTrace()(1)
+    result.stack ::= new StackTraceElement(
+      s"apply @ ${element.getClassName}",
+      element.getMethodName, element.getFileName, element.getLineNumber)
+    result
+  }
 
   /** Starts an asynchronous computation and returns a `Future` instance with the result of that computation once it completes.
   *

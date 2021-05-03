@@ -10,9 +10,10 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.concurrent.impl
-import scala.concurrent.{Batchable, CanAwait, ExecutionContext, ExecutionException, Future, TimeoutException}
-import scala.concurrent.duration.Duration
+package scala.concurrent
+package impl
+
+import duration.Duration
 import scala.annotation.{nowarn, switch, tailrec}
 import scala.util.control.{ControlThrowable, NonFatal}
 import scala.util.{Failure, Success, Try}
@@ -222,7 +223,8 @@ private[concurrent] object Promise {
 
     @throws(classOf[Exception])
     final def result(atMost: Duration)(implicit permit: CanAwait): T =
-      tryAwait0(atMost).get // returns the value, or throws the contained exception
+      try tryAwait0(atMost).get // returns the value, or throws the contained exception
+      catch { case t: Throwable => throw rewriteStackTrace(t, this)}
 
     override final def isCompleted: Boolean = value0 ne null
 
@@ -396,13 +398,13 @@ private[concurrent] object Promise {
           _fun = null // allow to GC
           _arg = null // see above
           _ec  = null // see above again
-          handleFailure(t, e)
+          handleFailure(t, e, this)
       }
 
       this
     }
 
-    private[this] final def handleFailure(t: Throwable, e: ExecutionContext): Unit = {
+    private[this] final def handleFailure(t: Throwable, e: ExecutionContext, f: Future[T]): Unit = {
       val wasInterrupted = t.isInstanceOf[InterruptedException]
       if (wasInterrupted || NonFatal(t)) {
         val completed = tryComplete0(get(), resolve(Failure(t)))
@@ -410,8 +412,8 @@ private[concurrent] object Promise {
 
         // Report or rethrow failures which are unlikely to otherwise be noticed
         if (_xform == Xform_foreach || _xform == Xform_onComplete || !completed)
-          e.reportFailure(t)
-      } else throw t
+          e.reportFailure(rewriteStackTrace(t, f))
+      } else throw rewriteStackTrace(t, f)
     }
 
     // Gets invoked by the ExecutionContext, when we have a value to transform.
@@ -467,7 +469,7 @@ private[concurrent] object Promise {
         if (resolvedResult ne null)
           tryComplete0(get(), resolvedResult.asInstanceOf[Try[T]]) // T is erased anyway so we won't have any use for it above
       } catch {
-        case t: Throwable => handleFailure(t, ec)
+        case t: Throwable => handleFailure(t, ec, this)
       }
     }
   }

@@ -122,6 +122,12 @@ package object concurrent {
    */
   @throws(classOf[Exception])
   final def blocking[T](body: => T): T = BlockContext.current.blockOn(body)(scala.concurrent.AwaitPermission)
+
+  private[concurrent] def rewriteStackTrace[T](t: Throwable, f: Future[T]): t.type = {
+    t.setStackTrace(f.stack.toArray ++ t.getStackTrace)
+    t
+  }
+
 }
 
 package concurrent {
