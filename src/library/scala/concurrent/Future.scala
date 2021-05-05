@@ -239,7 +239,8 @@ trait Future[+T] extends Awaitable[T] {
    * @return    a `Future` which will be completed with the result of the application of the function
    * @group Transformations
    */
-  def map[S](f: T => S)(implicit executor: ExecutionContext): Future[S] = transform(_ map f)
+  def map[S](f: T => S)(implicit executor: ExecutionContext): Future[S] =
+    Future.augment("map", Some(this), transform(_ map f))
 
   /** Creates a new future by applying a function to the successful result of
    *  this future, and returns the result of the function as the new future.
@@ -253,11 +254,11 @@ trait Future[+T] extends Awaitable[T] {
    * @return    a `Future` which will be completed with the result of the application of the function
    * @group Transformations
    */
-  def flatMap[S](f: T => Future[S])(implicit executor: ExecutionContext): Future[S] = transformWith {
+  def flatMap[S](f: T => Future[S])(implicit executor: ExecutionContext): Future[S] = Future.augment("flatMap", Some(this), transformWith {
     t =>
       if(t.isInstanceOf[Success[T]]) f(t.asInstanceOf[Success[T]].value)
       else this.asInstanceOf[Future[S]] // Safe cast
-  }
+  })
 
   /** Creates a new future with one level of nesting flattened, this method is equivalent
    *  to `flatMap(identity)`.
@@ -625,6 +626,14 @@ object Future {
     override final def toString: String = "Future(<never>)"
   }
 
+  private[concurrent] def augment[T, U](operation: String, parent: Option[Future[T]], f: Future[U]): f.type = {
+    val element = (new Throwable).getStackTrace()(2)
+    f.stack = new StackTraceElement(
+      s"$operation @ ${element.getClassName}",
+      element.getMethodName, element.getFileName, element.getLineNumber) :: parent.map(_.stack).getOrElse(Nil)
+    f
+  }
+
   /** A Future which is completed with the Unit value.
    */
   final val unit: Future[Unit] = fromTry(Success(()))
@@ -670,14 +679,8 @@ object Future {
   *  @param executor  the execution context on which the future is run
   *  @return          the `Future` holding the result of the computation
   */
-  final def apply[T](body: => T)(implicit executor: ExecutionContext): Future[T] = {
-    val result = unit.map(_ => body)
-    val element = (new Throwable).getStackTrace()(1)
-    result.stack ::= new StackTraceElement(
-      s"apply @ ${element.getClassName}",
-      element.getMethodName, element.getFileName, element.getLineNumber)
-    result
-  }
+  final def apply[T](body: => T)(implicit executor: ExecutionContext): Future[T] =
+    augment("apply", None, unit.map(_ => body))
 
   /** Starts an asynchronous computation and returns a `Future` instance with the result of that computation once it completes.
   *

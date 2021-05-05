@@ -128,7 +128,6 @@ package object concurrent {
       e.getClassName.startsWith("scala.concurrent.Future$") ||
       e.getClassName.startsWith("scala.concurrent.impl.")
     t.setStackTrace(t.getStackTrace.takeWhile(!isInternal(_)) ++ f.stack.toArray)
-    t.printStackTrace()
     t
   }
 

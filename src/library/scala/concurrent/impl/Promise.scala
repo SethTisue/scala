@@ -138,14 +138,16 @@ private[concurrent] object Promise {
 
     override final def flatMap[S](f: T => Future[S])(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
-      if (!state.isInstanceOf[Failure[T]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_flatMap, f, executor))
-      else this.asInstanceOf[Future[S]]
+      Future.augment("flatMap", Some(this),
+        if (!state.isInstanceOf[Failure[T]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_flatMap, f, executor))
+        else this.asInstanceOf[Future[S]])
     }
 
     override final def map[S](f: T => S)(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
-      if (!state.isInstanceOf[Failure[T]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_map, f, executor))
-      else this.asInstanceOf[Future[S]]
+      Future.augment("map", Some(this),
+        if (!state.isInstanceOf[Failure[T]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_map, f, executor))
+        else this.asInstanceOf[Future[S]])
     }
 
     override final def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = {
