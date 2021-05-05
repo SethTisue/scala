@@ -6,6 +6,8 @@ import scala.util.Try
 
 class FutureStackTraces {
 
+  implicit val ec: ExecutionContext = ExecutionContext.global
+
   def await[T](f: Future[T]): T =
     Await.result(f, duration.Duration.Inf)
 
@@ -18,26 +20,21 @@ class FutureStackTraces {
   }
 
   @Test
-  def statusQuo(): Unit = {
-    implicit val ec: ExecutionContext = ExecutionContext.global
-    val f = Future(throw new RuntimeException)
+  def testApply(): Unit = {
+    def throws = throw new RuntimeException
+    val f = Future {  // line 24
+      throws          // line 25
+    }                 // line 26
     val ex = Try(await(f)).failed.get
     val lines = trimmedStackTrace(ex)
     assertEquals("java.lang.RuntimeException", lines(0))
-    assertEquals("at apply @ scala.concurrent.FutureStackTraces.statusQuo(FutureStackTraces.scala:23)", lines(1))
     assertEquals("""|java.lang.RuntimeException
-                    |at apply @ scala.concurrent.FutureStackTraces.statusQuo(FutureStackTraces.scala:23)
-                    |at scala.concurrent.FutureStackTraces.$anonfun$statusQuo$1(FutureStackTraces.scala:23)
-                    |at scala.concurrent.Future$.$anonfun$apply$1(Future.scala:674)
-                    |at scala.concurrent.impl.Promise$Transformation.run(Promise.scala:433)
-                    |at java.util.concurrent.ForkJoinTask$RunnableExecuteAction.exec(ForkJoinTask.java:1402)
-                    |at java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:289)
-                    |at java.util.concurrent.ForkJoinPool$WorkQueue.runTask(ForkJoinPool.java:1056)
-                    |at java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1692)
-                    |at java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:175)""".stripMargin,
+                    |at scala.concurrent.FutureStackTraces.throws$1(FutureStackTraces.scala:24)
+                    |at scala.concurrent.FutureStackTraces.$anonfun$testApply$1(FutureStackTraces.scala:26)
+                    |at apply @ scala.concurrent.FutureStackTraces.testApply(FutureStackTraces.scala:25)""".stripMargin,
       lines.mkString("\n"))
   }
 
-  // TODO: test `Future#failed`
+  // TODO: other examples at https://github.com/jrudolph/future-exception-aspects/blob/master/Expected.md
 
 }

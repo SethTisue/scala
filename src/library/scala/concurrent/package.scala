@@ -124,7 +124,11 @@ package object concurrent {
   final def blocking[T](body: => T): T = BlockContext.current.blockOn(body)(scala.concurrent.AwaitPermission)
 
   private[concurrent] def rewriteStackTrace[T](t: Throwable, f: Future[T]): t.type = {
-    t.setStackTrace(f.stack.toArray ++ t.getStackTrace)
+    def isInternal(e: StackTraceElement) =
+      e.getClassName.startsWith("scala.concurrent.Future$") ||
+      e.getClassName.startsWith("scala.concurrent.impl.")
+    t.setStackTrace(t.getStackTrace.takeWhile(!isInternal(_)) ++ f.stack.toArray)
+    t.printStackTrace()
     t
   }
 
