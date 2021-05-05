@@ -2,8 +2,6 @@ package scala.concurrent
 
 import org.junit.Assert._
 import org.junit.Test
-
-import scala.tools.testkit.AssertUtil._
 import scala.util.Try
 
 class FutureStackTraces {
@@ -26,10 +24,10 @@ class FutureStackTraces {
     val ex = Try(await(f)).failed.get
     val lines = trimmedStackTrace(ex)
     assertEquals("java.lang.RuntimeException", lines(0))
-    assertEquals("at apply @ scala.concurrent.FutureStackTraces.statusQuo(FutureStackTraces.scala:25)", lines(1))
+    assertEquals("at apply @ scala.concurrent.FutureStackTraces.statusQuo(FutureStackTraces.scala:23)", lines(1))
     assertEquals("""|java.lang.RuntimeException
-                    |at apply @ scala.concurrent.FutureStackTraces.statusQuo(FutureStackTraces.scala:25)
-                    |at scala.concurrent.FutureStackTraces.$anonfun$statusQuo$1(FutureStackTraces.scala:25)
+                    |at apply @ scala.concurrent.FutureStackTraces.statusQuo(FutureStackTraces.scala:23)
+                    |at scala.concurrent.FutureStackTraces.$anonfun$statusQuo$1(FutureStackTraces.scala:23)
                     |at scala.concurrent.Future$.$anonfun$apply$1(Future.scala:674)
                     |at scala.concurrent.impl.Promise$Transformation.run(Promise.scala:433)
                     |at java.util.concurrent.ForkJoinTask$RunnableExecuteAction.exec(ForkJoinTask.java:1402)
