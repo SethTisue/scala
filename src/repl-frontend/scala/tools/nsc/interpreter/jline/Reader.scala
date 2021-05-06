@@ -105,6 +105,18 @@ object Reader {
     val completer = new Completion(completion)
     val parser    = new ReplParser(repl)
     val history   = new DefaultHistory
+    val highlighter = new Highlighter {
+      import org.jline.utils.AttributedString
+      def highlight(reader: org.jline.reader.LineReader, buffer: String): AttributedString =
+        AttributedString.fromAnsi(
+          SyntaxHighlighting.highlight(
+            buffer,
+            new ScalaParser(repl).tokenize(buffer)))
+      def setErrorIndex(index: Int): Unit =
+        ()
+      def setErrorPattern(regex: java.util.regex.Pattern): Unit =
+        ()
+    }
 
     val builder =
       LineReaderBuilder.builder()
@@ -112,6 +124,7 @@ object Reader {
       .completer(completer)
       .history(history)
       .parser(parser)
+      .highlighter(if (config.colorOk) highlighter else null)
       .terminal(jlineTerminal)
 
     locally {
@@ -234,20 +247,17 @@ object Reader {
           repl.parseString(line) match {
             case Incomplete if line.endsWith("\n\n") => throw new SyntaxError(0, 0, "incomplete") // incomplete but we're bailing now
             case Incomplete                          => throw new EOFError(0, 0, "incomplete")    // incomplete so keep reading input
-            case Success | Error                     => tokenize(line, cursor) // Try a real "final" parse. (dnw: even for Error??)
+            case Success | Error                     => parse2(line, cursor) // Try a real "final" parse. (dnw: even for Error??)
           }
-        case COMPLETE => tokenize(line, cursor)    // Parse to find completions (typically after a Tab).
+        case COMPLETE => parse2(line, cursor)    // Parse to find completions (typically after a Tab).
         case SECONDARY_PROMPT =>
-          tokenize(line, cursor) // Called when we need to update the secondary prompts.
+          parse2(line, cursor) // Called when we need to update the secondary prompts.
         case SPLIT_LINE | UNSPECIFIED =>
           ScalaParsedLine(line, cursor, 0, 0, Nil)
       }
     }
-    private def tokenize(line: String, cursor: Int): ScalaParsedLine = {
-      val tokens = repl.reporter.suppressOutput {
-        repl.tokenize(line)
-      }
-      repl.reporter.reset()
+    private def parse2(line: String, cursor: Int): ScalaParsedLine = {
+      val tokens = tokenize(line)
       if (tokens.isEmpty) ScalaParsedLine(line, cursor, 0, 0, Nil)
       else {
         val current = tokens.find(t => t.start <= cursor && cursor <= t.end)
@@ -266,6 +276,9 @@ object Reader {
         ScalaParsedLine(line, cursor, wordCursor, wordIndex, tokens)
       }
     }
+    def tokenize(line: String): List[TokenData] =
+      try repl.reporter.suppressOutput { repl.tokenize(line) }
+      finally repl.reporter.reset()
   }
   class CommandParser(repl: Repl) extends Parser {
     val defaultParser = new DefaultParser()
