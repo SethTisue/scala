@@ -36,7 +36,8 @@ object SyntaxHighlighting {
     def highlightRange(from: Int, to: Int, color: String) =
       java.util.Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
     for (tokenData <- tokens)
-      highlightRange(tokenData.start, tokenData.end, color(tokenData.token))
+      if (tokenData.start >= 0 && tokenData.end < in.length && tokenData.end > tokenData.start)
+        highlightRange(tokenData.start, tokenData.end, color(tokenData.token))
     ansify(in, colorAt)
   }
 
@@ -62,6 +63,7 @@ object SyntaxHighlighting {
     else
       NoColor
 
+  // I couldn't find a source of truth we could use for this
   val isKeyword = {
     import Tokens._
     Set[Int](

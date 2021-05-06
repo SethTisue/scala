@@ -122,7 +122,7 @@ object Reader {
       .completer(completer)
       .history(history)
       .parser(parser)
-      .highlighter(highlighter)
+      .highlighter(if (config.colorOk) highlighter else null)
       .terminal(jlineTerminal)
 
     locally {
