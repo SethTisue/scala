@@ -5,8 +5,8 @@ import org.junit.Test
 import scala.util.Try
 
 class FutureStackTraces {
-
   implicit val ec: ExecutionContext = ExecutionContext.global
+  // implicit val ec: scala.concurrent.ExecutionContext = (scala.concurrent.ExecutionContext: {def opportunistic: scala.concurrent.ExecutionContextExecutor} ).opportunistic
 
   def await[T](f: Future[T]): T =
     Await.result(f, duration.Duration.Inf)
