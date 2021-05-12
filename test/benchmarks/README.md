@@ -15,7 +15,7 @@ Assuming that we're benchmarking `scala.collection.mutable.OpenHashMap`,
 the benchmark runner would likely be named `scala.collection.mutable.OpenHashMapRunner`.
 Using this example, one would simply run
 
-    bench/jmh:runMain scala.collection.mutable.OpenHashMapRunner
+    bench/Jmh/runMain scala.collection.mutable.OpenHashMapRunner
 
 in the Scala sbt build.
 
@@ -31,9 +31,9 @@ should that be necessary for benchmarking.
 
 There are two types of classes in the source directory:
 those suffixed `Benchmark` and those suffixed `Runner`.
-The former are benchmarks that can be run directly using `bench/jmh:run`;
+The former are benchmarks that can be run directly using `bench/Jmh/run`;
 however, they are normally run from a corresponding class of the latter type,
-which is run using `bench/jmh:runMain` (as described above).
+which is run using `bench/Jmh/runMain` (as described above).
 This …`Runner` class is useful for setting appropriate JMH command options,
 and for processing the JMH results into files that can be read by other tools, such as Gnuplot.
 
@@ -42,7 +42,7 @@ This includes creating output files in a subdirectory of `target/jmh-results`
 derived from the fully-qualified package name of the `Runner` class.
 
 ## Some useful HotSpot options
-Adding these to the `jmh:run` or `jmh:runMain` command line may help if you're using the HotSpot (Oracle, OpenJDK) compiler.
+Adding these to the `Jmh/run` or `Jmh/runMain` command line may help if you're using the HotSpot (Oracle, OpenJDK) compiler.
 They require prefixing with `-jvmArgs`.
 See [the Java documentation](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html) for more options. 
 
@@ -90,10 +90,10 @@ code.
 If you install `hsdis`, as described above, machine code disassembly is also created.
 
 You can generate the `hotspot.log` file for a benchmark run by adding the [required JVM options](https://github.com/AdoptOpenJDK/jitwatch/wiki/Building-hsdis)
-to JMH benchmark execution: 
+to JMH benchmark execution:
 
 ```
-sbt:root> bench/jmh:run scala.collection.mutable.ArrayOpsBenchmark.insertInteger -psize=1000 -f1 -jvmArgs -XX:+UnlockDiagnosticVMOptions -jvmArgs -XX:+TraceClassLoading -jvmArgs -XX:+LogCompilation -jvmArgs -XX:LogFile=target/hotspot.log -jvmArgs -XX:+PrintAssembly
+sbt:root> bench/Jmh/run scala.collection.mutable.ArrayOpsBenchmark.insertInteger -psize=1000 -f1 -jvmArgs -XX:+UnlockDiagnosticVMOptions -jvmArgs -XX:+TraceClassLoading -jvmArgs -XX:+LogCompilation -jvmArgs -XX:LogFile=target/hotspot.log -jvmArgs -XX:+PrintAssembly
 ...
 [info] Loaded disassembler from /Users/jz/.jabba/jdk/1.8.172/Contents/Home/jre/lib/hsdis-amd64.dylib
 [info] Decoding compiled method 0x0000000113f60bd0:
@@ -114,7 +114,7 @@ sbt:root> bench/jmh:run scala.collection.mutable.ArrayOpsBenchmark.insertInteger
 JITWatch requires configuration of the class and source path. We generate that with a custom task in our build:
 
 ```
-sbt> bench/jmh:jitwatchConfigFile
+sbt> bench/Jmh/jitwatchConfigFile
 ...
 jmh
 ...
