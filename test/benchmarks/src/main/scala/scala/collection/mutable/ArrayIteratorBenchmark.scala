@@ -9,7 +9,7 @@ import org.openjdk.jmh.infra.Blackhole
 @Warmup(iterations = 4, time = 4, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 5, time = 5, timeUnit = TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-class ArrayIteratorBenchmarks {
+class ArrayIteratorBenchmark {
 
   @Param(Array(
     "0",
