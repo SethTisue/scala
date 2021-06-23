@@ -18,7 +18,7 @@ jobs:
       matrix:
         include:
           - java: 8
-          - java: 17
+          - java: 17-ea
     steps:
       - run: git config --global core.autocrlf false
       - name: Checkout
