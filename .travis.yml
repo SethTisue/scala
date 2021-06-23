@@ -13,7 +13,6 @@ templates: # this has no effect on travis, it's just a place to put our template
     if: type = pull_request OR repo != scala/scala
 
   cron-jdk17: &cron-jdk17
-    if: type = cron AND repo = scala/scala
     env: ADOPTOPENJDK=17
 
   build-for-testing: &build-for-testing
